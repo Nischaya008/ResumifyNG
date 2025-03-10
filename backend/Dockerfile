@@ -10,17 +10,26 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libasound2-dev \
     espeak-ng \
+    python3.11-venv \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy everything at once
-COPY . .
+# Create and activate virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Upgrade pip and install build tools
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Copy requirements first
+COPY requirements.txt /app/
+RUN echo "Current directory:" && pwd && \
+    echo "Directory contents:" && ls -la && \
+    echo "Requirements file:" && cat requirements.txt
 
-# Verify requirements.txt exists and install dependencies
-RUN ls -la && \
+# Upgrade pip and install dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . /app/
 
 # Expose port
 EXPOSE 8000
