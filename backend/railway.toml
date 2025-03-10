@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pip install -r /app/requirements.txt"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
@@ -10,4 +10,4 @@ healthcheckTimeout = 100
 [nixpacks]
 python_version = "3.11"
 install_requirements = true
-requirements_file = "/app/requirements.txt"
+requirements_file = "requirements.txt"
