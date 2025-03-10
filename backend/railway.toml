@@ -1,5 +1,5 @@
 [build]
-builder = "docker"  # Use your Dockerfile instead of nixpacks
+builder = "docker"  # Instruct Railway to use the Dockerfile directly
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
