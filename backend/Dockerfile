@@ -1,13 +1,11 @@
-FROM python:3.11-slim
+FROM python:3.11.7-slim
 
-# Install system dependencies including Fortran and Python distutils
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
     python3-dev \
     python3-distutils \
-    python3.11-dev \
-    python3.11-distutils \
     ffmpeg \
     pkg-config \
     gcc \
@@ -20,18 +18,13 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Install Python dependencies in stages
+# Copy requirements first for better caching
 COPY requirements.txt .
 
-# Upgrade pip and install basic build requirements
+# Install dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir wheel setuptools Cython
-
-# Install numpy first as it's required by many scientific packages
-RUN pip install --no-cache-dir numpy==1.24.3
-
-# Install the rest of the requirements
-RUN pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir wheel setuptools Cython && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
