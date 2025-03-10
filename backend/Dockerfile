@@ -1,5 +1,5 @@
-# Use Python 3.11 image with build tools
-FROM python:3.11
+# Use Python 3.11 slim image as base
+FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && \
@@ -7,6 +7,10 @@ RUN apt-get update && \
     build-essential \
     python3-dev \
     ffmpeg \
+    pkg-config \
+    gcc \
+    g++ \
+    git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -17,7 +21,9 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --upgrade pip && \
+    pip install --no-cache-dir wheel setuptools && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY . .
