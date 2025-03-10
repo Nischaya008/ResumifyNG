@@ -14,11 +14,16 @@ aptPkgs = ["python3-venv"]
 cmds = [
   "pwd",
   "ls -la",
+  "mkdir -p /app",
+  "cp -r . /app/",
+  "cd /app",
+  "ls -la",
   "python -m venv /opt/venv",
   ". /opt/venv/bin/activate",
   "pip install --upgrade pip setuptools wheel",
-  "pip install -r /app/requirements.txt"
+  "pip install -r requirements.txt"
 ]
 
 [phases.setup.env]
 PYTHONPATH = "/app"
+PATH = "/opt/venv/bin:${PATH}"
