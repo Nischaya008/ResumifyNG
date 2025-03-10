@@ -26,7 +26,7 @@ RUN echo "Current directory:" && pwd && \
 
 # Upgrade pip and install dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy the rest of the application
 COPY . /app/
