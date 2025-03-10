@@ -9,4 +9,15 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
 [nixpacks]
-install-cmd = "pip install -r requirements.txt"
+install-cmd = """
+apt-get update && \
+apt-get install -y \
+    build-essential \
+    python3-dev \
+    ffmpeg \
+    pkg-config \
+    gcc \
+    g++ \
+    git && \
+pip install -r requirements.txt
+"""
