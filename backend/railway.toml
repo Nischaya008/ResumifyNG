@@ -1,8 +1,18 @@
 [build]
-builder = "docker"
-dockerfilePath = "Dockerfile"
+builder = "nixpacks"
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
+
+[phases.setup]
+nixPkgs = ["python311", "python311Packages.pip", "python311Packages.virtualenv", "ffmpeg", "espeak-ng"]
+
+[phases.install]
+cmds = [
+  "python -m venv /opt/venv",
+  ". /opt/venv/bin/activate",
+  "pip install --upgrade pip setuptools wheel",
+  "pip install -r requirements.txt"
+]
