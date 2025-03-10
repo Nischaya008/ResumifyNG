@@ -1,6 +1,7 @@
 [build]
-builder = "docker"  # Force Railway to use Dockerfile
-pythonVersion = "3.11"  # Explicitly set Python version
+builder = "docker"
+dockerfilePath = "Dockerfile"
+buildContext = "."  # Explicitly set build context to current directory
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
