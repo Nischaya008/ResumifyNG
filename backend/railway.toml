@@ -19,8 +19,6 @@ apt-get install -y \
     gcc \
     g++ \
     git && \
-python -m venv /opt/venv && \
-. /opt/venv/bin/activate && \
-pip install --no-cache-dir --upgrade pip wheel setuptools Cython && \
+pip install --no-cache-dir wheel setuptools Cython && \
 pip install --no-cache-dir -r requirements.txt
 """
