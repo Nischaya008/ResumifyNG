@@ -1,12 +1,12 @@
 # Core build tools
-wheel==0.42.0
-setuptools==69.1.1
-Cython==3.0.8
+wheel>=0.42.0
+setuptools>=69.1.1
+Cython>=3.0.8
 
 # Core numerical packages (install first)
 numpy==1.24.3
-scipy==1.10.1
-pandas==2.0.0
+scipy>=1.10.1
+pandas>=2.0.0
 
 # Web framework
 fastapi==0.95.0
