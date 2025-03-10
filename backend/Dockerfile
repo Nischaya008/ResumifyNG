@@ -19,12 +19,8 @@ WORKDIR /app
 # Install Python dependencies in stages
 COPY requirements.txt .
 
-# Create and activate virtual environment
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
 # Install basic build requirements first
-RUN pip install --no-cache-dir --upgrade pip wheel setuptools Cython
+RUN pip install --no-cache-dir wheel setuptools Cython
 
 # Install the rest of the requirements
 RUN pip install --no-cache-dir -r requirements.txt
