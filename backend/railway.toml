@@ -1,5 +1,5 @@
 [build]
-builder = "nixpacks"
+builder = "docker"  # Use your Dockerfile instead of nixpacks
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
@@ -7,31 +7,3 @@ healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[nixpacks]
-python_version = "3.11"
-providers = ["python", "nodejs"]
-
-[phases.setup]
-nixPkgs = [
-    "python311",
-    "python311Packages.pip",
-    "python311Packages.setuptools",
-    "python311Packages.wheel",
-    "python311Packages.distutils-extra",
-    "python311Packages.python-distutils-extra",
-    "gcc",
-    "gfortran",
-    "ffmpeg",
-    "pkg-config",
-    "gnumake",
-    "binutils"
-]
-
-[phases.install]
-cmds = [
-    "python -m ensurepip --upgrade",
-    "python -m pip install --upgrade pip setuptools wheel",
-    "pip install numpy==1.24.3",
-    "pip install -r requirements.txt"
-]
