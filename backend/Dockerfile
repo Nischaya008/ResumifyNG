@@ -1,40 +1,38 @@
-FROM python:3.11-slim
-
-# Install system dependencies including distutils for Python 3.11
-RUN apt-get update && \
-    apt-get install -y \
-        build-essential \
-        python3-dev \
-        python3-distutils \
-        python3.11-dev \
-        ffmpeg \
-        pkg-config \
-        gcc \
-        g++ \
-        gfortran \
-        git && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Use a non-slim image to avoid missing dependencies
+FROM python:3.11-bullseye  
 
 # Set working directory
-WORKDIR /app
+WORKDIR /app  
 
-# Copy requirements for caching
-COPY requirements.txt .
+# Install system dependencies including distutils
+RUN apt-get update && apt-get install -y \
+    python3-distutils \
+    python3-venv \
+    python3-dev \
+    build-essential \
+    ffmpeg \
+    libasound2 \
+    libasound2-dev \
+    espeak-ng \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*  
 
-# Upgrade pip and install dependencies globally (no venv)
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir numpy==1.24.3 && \
-    pip install --no-cache-dir -r requirements.txt
+# Ensure pip is upgraded and has setuptools
+RUN python -m pip install --upgrade pip setuptools wheel  
 
-# Copy the rest of the application code
-COPY . .
+# Copy requirements first to cache dependencies
+COPY requirements.txt .  
 
-# Create necessary cache directories
-RUN mkdir -p backend/temp/tts_cache
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt  
 
-# Expose port for the application
-EXPOSE 8000
+# Copy application files
+COPY . .  
 
-# Start the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Ensure correct permissions for execution
+RUN chmod +x ./start.sh  
+
+# Expose application port
+EXPOSE 8000  
+
+# Start command
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]  
