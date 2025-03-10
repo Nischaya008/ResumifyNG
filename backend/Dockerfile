@@ -1,11 +1,14 @@
-# Use Python 3.11 slim image
-FROM python:3.11-slim
+# Use Python 3.11 image with build tools
+FROM python:3.11
 
-# Install ffmpeg and other dependencies
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    build-essential \
+    python3-dev \
+    ffmpeg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
