@@ -23,14 +23,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 # Ensure pip is upgraded and has setuptools
 RUN python3 -m pip install --upgrade pip setuptools wheel  
 
-# Copy requirements
-COPY requirements.txt .  
+# Copy application files first
+COPY . .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt  
-
-# Copy application files
-COPY . .  
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose port
 EXPOSE 8000  
