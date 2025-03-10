@@ -28,7 +28,7 @@ textblob==0.15.3
 # AI and Communication
 langchain==0.0.200
 langchain_community==0.0.10
-together==0.2.0
+requests>=2.31.0  # Added for Together AI REST API calls
 pusher==3.3.0
 websockets==11.0.0
 
