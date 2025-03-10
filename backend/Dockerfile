@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies including Fortran
 RUN apt-get update && \
     apt-get install -y \
     build-essential \
@@ -9,6 +9,7 @@ RUN apt-get update && \
     pkg-config \
     gcc \
     g++ \
+    gfortran \
     git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -21,6 +22,9 @@ COPY requirements.txt .
 
 # Install basic build requirements first
 RUN pip install --no-cache-dir wheel setuptools Cython
+
+# Install numpy first as it's required by many scientific packages
+RUN pip install --no-cache-dir numpy==1.24.3
 
 # Install the rest of the requirements
 RUN pip install --no-cache-dir -r requirements.txt
