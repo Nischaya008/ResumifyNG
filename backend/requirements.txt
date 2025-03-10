@@ -1,7 +1,12 @@
-# Basic requirements
+# Build tools and basic requirements
 wheel==0.42.0
 setuptools==69.1.1
 Cython==3.0.8
+
+# Core numerical packages
+numpy==1.24.3
+scipy==1.10.1
+pandas==2.0.0
 
 # Web framework
 fastapi==0.95.0
@@ -16,16 +21,9 @@ pymupdf==1.22.0
 python-docx==0.8.11
 
 # NLP and ML
-numpy==1.24.3
-scipy==1.10.1
-pandas==2.0.0
 spacy==3.5.4
 scikit-learn==1.2.0
 textblob==0.15.3
-
-# Spacy models
-https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz
-https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.5.0/en_core_web_md-3.5.0.tar.gz
 
 # AI and Communication
 langchain==0.0.200
@@ -39,3 +37,7 @@ gTTS==2.3.2
 pygame==2.5.0
 pydub==0.25.1
 ffmpeg-python==0.2.0
+
+# Spacy models (install after spacy)
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.5.0/en_core_web_md-3.5.0.tar.gz
