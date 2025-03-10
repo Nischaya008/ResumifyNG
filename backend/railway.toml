@@ -23,12 +23,14 @@ nixPkgs = [
     "gcc",
     "gfortran",
     "ffmpeg",
-    "pkg-config"
+    "pkg-config",
+    "gnumake",
+    "binutils"
 ]
 
 [phases.install]
 cmds = [
-    "apt-get update && apt-get install -y python3.11-distutils python3-distutils",
+    "python -m ensurepip --upgrade",
     "python -m pip install --upgrade pip setuptools wheel",
     "pip install numpy==1.24.3",
     "pip install -r requirements.txt"
