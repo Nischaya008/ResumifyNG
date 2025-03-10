@@ -1,3 +1,10 @@
+wheel==0.42.0
+setuptools==69.1.1
+Cython==3.0.8
+numpy==1.26.4
+scipy==1.15.2
+pandas==2.2.3
+spacy==3.5.4
 fastapi==0.115.11
 uvicorn==0.34.0
 flask==3.1.0
@@ -17,3 +24,7 @@ gTTS==2.5.4
 pygame==2.6.1
 pydub==0.25.1
 ffmpeg-python==0.2.0
+
+# spaCy models
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz
+en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.5.0/en_core_web_md-3.5.0.tar.gz
