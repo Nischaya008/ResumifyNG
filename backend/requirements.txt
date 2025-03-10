@@ -24,7 +24,5 @@ gTTS==2.5.4
 pygame==2.6.1
 pydub==0.25.1
 ffmpeg-python==0.2.0
-
-# spaCy models
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0.tar.gz
 en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.5.0/en_core_web_md-3.5.0.tar.gz
