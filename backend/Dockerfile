@@ -12,17 +12,15 @@ RUN apt-get update && apt-get install -y \
     espeak-ng \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Copy everything at once
+COPY . .
+
 # Upgrade pip and install build tools
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy requirements first
-COPY requirements.txt /app/requirements.txt
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-# Copy the rest of the application
-COPY . /app/
+# Verify requirements.txt exists and install dependencies
+RUN ls -la && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Expose port
 EXPOSE 8000
