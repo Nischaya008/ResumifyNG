@@ -18,7 +18,9 @@ apt-get install -y \
     pkg-config \
     gcc \
     g++ \
+    gfortran \
     git && \
 pip install --no-cache-dir wheel setuptools Cython && \
+pip install --no-cache-dir numpy==1.24.3 && \
 pip install --no-cache-dir -r requirements.txt
 """
