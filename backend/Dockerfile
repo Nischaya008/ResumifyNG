@@ -1,4 +1,4 @@
-FROM python:3.11.7-slim
+FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && \
@@ -6,6 +6,7 @@ RUN apt-get update && \
     build-essential \
     python3-dev \
     python3-distutils \
+    python3.11-dev \
     ffmpeg \
     pkg-config \
     gcc \
@@ -22,8 +23,8 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir wheel setuptools Cython && \
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir numpy==1.24.3 && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
