@@ -33,6 +33,8 @@ aptPkgs = [
 
 [phases.setup.env]
 SDL_AUDIODRIVER = "disk"
+PYTHONPATH = "/app"
+PATH = "/opt/venv/bin:${PATH}"
 
 [phases.install]
 cmds = [
@@ -47,7 +49,3 @@ cmds = [
   "pip install --upgrade pip setuptools wheel",
   "pip install -r requirements.txt"
 ]
-
-[phases.setup.env]
-PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:${PATH}"
