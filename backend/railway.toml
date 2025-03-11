@@ -34,7 +34,8 @@ aptPkgs = [
 [phases.setup.env]
 SDL_AUDIODRIVER = "disk"
 PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:${PATH}"
+PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:${PATH}"
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 
 [phases.install]
 cmds = [
