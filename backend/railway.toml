@@ -1,85 +1,12 @@
 [build]
 builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
-startCommand = "cd /app && uvicorn main:app --host 0.0.0.0 --port=${PORT}"
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
 
-[phases.setup]
-nixPkgs = [
-    "python311",
-    "python311Packages.pip",
-    "python311Packages.virtualenv",
-    "ffmpeg",
-    "espeak-ng",
-    "glib",
-    "glib.dev",
-    "pkg-config",
-    "SDL2",
-    "SDL2_mixer",
-    "alsa-lib",
-    "pulseaudio"
-]
-aptPkgs = [
-    "python3-venv",
-    "libglib2.0-0",
-    "libglib2.0-dev",
-    "libgthread-2.0-0",
-    "libsdl2-2.0-0",
-    "libsdl2-mixer-2.0-0",
-    "libsdl2-dev",
-    "libsdl2-mixer-dev",
-    "libasound2-dev",
-    "libportaudio2",
-    "libportaudiocpp0",
-    "portaudio19-dev",
-    "ffmpeg",
-    "libpulse0",
-    "libpulse-dev",
-    "pulseaudio"
-]
-
-[phases.setup.env]
-SDL_AUDIODRIVER = "disk"
-PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:/lib/x86_64-linux-gnu:${PATH}"
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
-PULSE_SERVER = "unix:/tmp/pulse.sock"
-PKG_CONFIG_PATH = "/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-
-[phases.preinit]
-cmds = """
-mkdir -p /usr/lib
-apt-get update
-apt-get install -y libglib2.0-0 libglib2.0-dev libgthread-2.0-0
-ldconfig
-ln -sf /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /usr/lib/libgthread-2.0.so.0
-ln -sf /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /lib/x86_64-linux-gnu/libgthread-2.0.so.0
-"""
-
-[phases.install]
-cmds = [
-  "pwd",
-  "ls -la",
-  "mkdir -p /app",
-  "cp -r . /app/",
-  "cd /app",
-  "ls -la",
-  # Update library cache and verify installations
-  "ldconfig",
-  "ldconfig -p | grep -E 'libgthread|libsdl|libpulse'",
-  "ls -l /usr/lib/x86_64-linux-gnu/libgthread*",
-  "ls -l /usr/lib/libgthread*",
-  # Start audio services
-  "pulseaudio --start --exit-idle-time=-1",
-  # Setup Python environment
-  "python -m venv /opt/venv",
-  ". /opt/venv/bin/activate",
-  "pip install --upgrade pip setuptools wheel",
-  "pip install -r requirements.txt",
-  # Verify ffmpeg installation
-  "which ffmpeg",
-  "ffmpeg -version",
-  # Final library verification
-  "ldd /opt/venv/lib/python3.11/site-packages/pygame/_sdl2/libsdl2.so",
-  "ldd $(which python3) | grep -F gthread"
-]
+[variables]
+PYTHON_VERSION = "3.10"
+NIXPACKS_PYTHON_VERSION = "3.10"
