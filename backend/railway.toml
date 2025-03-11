@@ -10,6 +10,10 @@ healthcheckTimeout = 100
 [variables]
 PYTHON_VERSION = "3.11"
 NIXPACKS_PYTHON_VERSION = "3.11"
+PATH = "/nix/var/nix/profiles/default/bin:$PATH"
+LD_LIBRARY_PATH = "/nix/var/nix/profiles/default/lib:/nix/var/nix/profiles/default/lib64:$LD_LIBRARY_PATH"
+PYTHONPATH = "/nix/var/nix/profiles/default/lib/python3.11/site-packages:$PYTHONPATH"
+SDL_AUDIODRIVER = "pulseaudio"
 
 [phases.setup]
 nixPkgs = [
@@ -26,5 +30,14 @@ nixPkgs = [
     "gst-plugins-bad",
     "gst-plugins-ugly",
     "gst-libav",
-    "alsa-lib"
+    "alsa-lib",
+    "pulseaudio",
+    "libpulseaudio"
+]
+
+[phases.build]
+cmds = [
+    "mkdir -p /nix/var/nix/profiles/default/lib/gstreamer-1.0",
+    "ln -sf /nix/var/nix/profiles/default/lib/gstreamer-1.0/* /nix/var/nix/profiles/default/lib/",
+    "ldconfig || true"
 ]
