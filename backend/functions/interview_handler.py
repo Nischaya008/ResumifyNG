@@ -78,7 +78,13 @@ else:
 router = APIRouter()
 
 # Initialize pygame mixer for audio playback
-pygame.mixer.init()
+try:
+    pygame.mixer.init()
+    audio_enabled = True
+except Exception as e:
+    print(f"Warning: Could not initialize pygame mixer: {e}")
+    print("Audio playback will be disabled")
+    audio_enabled = False
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
@@ -143,14 +149,20 @@ def generate_speech(text: str, cache_path: pathlib.Path):
 
 def stop_current_speech():
     """Stop the current speech if any"""
-    pygame.mixer.music.stop()
+    if audio_enabled:
+        try:
+            pygame.mixer.music.stop()
+        except Exception as e:
+            print(f"Error stopping speech: {e}")
+            global audio_enabled
+            audio_enabled = False
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
-    global is_muted
+    global is_muted, audio_enabled
     
-    # Only proceed if not muted or forced
-    if not is_muted or force:
+    # Only proceed if audio is enabled and not muted (or forced)
+    if audio_enabled and (not is_muted or force):
         try:
             stop_current_speech()  # Stop any existing speech
             
@@ -172,6 +184,7 @@ def speak_text(text, force=False):
                     
         except Exception as e:
             print(f"Speech error: {e}")
+            audio_enabled = False  # Disable audio on error
 
 class MuteRequest(BaseModel):
     mute: bool
