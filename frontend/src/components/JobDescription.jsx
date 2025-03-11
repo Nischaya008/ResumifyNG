@@ -1,9 +1,22 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './JobDescription.css'
 
 function JobDescription({ onSubmit }) {
   const [description, setDescription] = useState('')
   const [error, setError] = useState(null)
+  const textareaRef = useRef(null)
+
+  // Handle focus restoration when window regains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      if (textareaRef.current && document.activeElement === document.body) {
+        textareaRef.current.focus()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -36,10 +49,27 @@ function JobDescription({ onSubmit }) {
       
       <form onSubmit={handleSubmit}>
         <textarea
+          ref={textareaRef}
           className="job-description-textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          onClick={(e) => e.target.focus()}
+          onFocus={() => {
+            if (textareaRef.current) {
+              textareaRef.current.focus()
+            }
+          }}
+          onClick={() => {
+            if (textareaRef.current) {
+              textareaRef.current.focus()
+            }
+          }}
+          onBlur={() => {
+            // Ensure we can regain focus after blur
+            if (textareaRef.current) {
+              textareaRef.current.tabIndex = 0
+            }
+          }}
+          tabIndex={0}
           placeholder="Copy and paste the job description here. Include the job title, responsibilities, requirements, and any other details provided in the job posting..."
         />
         <button
