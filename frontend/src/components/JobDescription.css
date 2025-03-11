@@ -52,14 +52,37 @@
   font-size: 1.1rem;
   line-height: 1.5;
   resize: vertical;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
   margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .job-description-textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.4);
+  background-color: rgba(var(--background-rgb), 0.9);
+}
+
+/* Maintain focus styles even when window/tab is switched */
+.job-description-textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.4);
+  background-color: rgba(var(--background-rgb), 0.9);
+}
+
+/* Ensure textarea remains interactive during container hover */
+.job-description-container:hover .job-description-textarea {
+  pointer-events: auto;
+}
+
+/* Improve focus visibility */
+.job-description-textarea:focus::selection {
+  background-color: rgba(var(--accent-rgb), 0.2);
 }
 
 .job-description-textarea::placeholder {
