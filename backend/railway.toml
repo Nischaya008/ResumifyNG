@@ -14,7 +14,9 @@ nixPkgs = [
     "glib",
     "pkg-config",
     "SDL2",
-    "SDL2_mixer"
+    "SDL2_mixer",
+    "alsa-lib",
+    "pulseaudio"
 ]
 aptPkgs = [
     "python3-venv",
@@ -28,14 +30,18 @@ aptPkgs = [
     "libportaudio2",
     "libportaudiocpp0",
     "portaudio19-dev",
-    "ffmpeg"
+    "ffmpeg",
+    "libpulse0",
+    "libpulse-dev",
+    "pulseaudio"
 ]
 
 [phases.setup.env]
 SDL_AUDIODRIVER = "disk"
 PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:${PATH}"
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
+PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:${PATH}"
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:${LD_LIBRARY_PATH:-}"
+PULSE_SERVER = "unix:/tmp/pulse.sock"
 
 [phases.install]
 cmds = [
@@ -45,8 +51,12 @@ cmds = [
   "cp -r . /app/",
   "cd /app",
   "ls -la",
+  "ldconfig",
+  "pulseaudio --start --exit-idle-time=-1",
   "python -m venv /opt/venv",
   ". /opt/venv/bin/activate",
   "pip install --upgrade pip setuptools wheel",
-  "pip install -r requirements.txt"
+  "pip install -r requirements.txt",
+  "which ffmpeg",
+  "ffmpeg -version"
 ]
