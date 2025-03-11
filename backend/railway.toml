@@ -14,6 +14,8 @@ PATH = "/nix/var/nix/profiles/default/bin:$PATH"
 LD_LIBRARY_PATH = "/nix/var/nix/profiles/default/lib:/nix/var/nix/profiles/default/lib64:$LD_LIBRARY_PATH"
 PYTHONPATH = "/nix/var/nix/profiles/default/lib/python3.11/site-packages:$PYTHONPATH"
 SDL_AUDIODRIVER = "pulseaudio"
+AUDIODEV = "null"  # Fallback audio device
+FFMPEG_PATH = "/nix/var/nix/profiles/default/bin/ffmpeg"
 
 [phases.setup]
 nixPkgs = [
@@ -32,12 +34,14 @@ nixPkgs = [
     "gst-libav",
     "alsa-lib",
     "pulseaudio",
-    "libpulseaudio"
+    "libpulseaudio",
+    "portaudio"
 ]
 
 [phases.build]
 cmds = [
     "mkdir -p /nix/var/nix/profiles/default/lib/gstreamer-1.0",
     "ln -sf /nix/var/nix/profiles/default/lib/gstreamer-1.0/* /nix/var/nix/profiles/default/lib/",
+    "mkdir -p /tmp/tts_cache && chmod 777 /tmp/tts_cache",
     "ldconfig || true"
 ]
