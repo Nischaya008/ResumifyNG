@@ -28,8 +28,8 @@ scikit-learn==1.2.0
 textblob==0.15.3
 
 # AI and Communication
-langchain==0.0.200
-langchain_community==0.0.10
+langchain>=0.1.0
+langchain_community>=0.0.10
 together==0.1.9
 pusher==3.3.0
 websockets==11.0.0
