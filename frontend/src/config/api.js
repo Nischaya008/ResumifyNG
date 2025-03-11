@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://resumifyng-backend.up.railway.app'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 export const endpoints = {
   uploadResume: `${API_BASE_URL}/api/upload_resume`,
