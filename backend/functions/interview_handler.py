@@ -83,26 +83,42 @@ audio_enabled = False
 # Initialize pygame with specific audio driver
 def init_pygame_audio():
     global audio_enabled
-    drivers = ['pulseaudio', 'alsa', 'disk', 'dummy']
-    
-    for driver in drivers:
-        try:
-            os.environ['SDL_AUDIODRIVER'] = driver
-            pygame.init()
-            pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
-            audio_enabled = True
-            print(f"Successfully initialized pygame audio with {driver} driver")
-            return
-        except Exception as e:
-            print(f"Failed to initialize audio with {driver} driver: {e}")
-            continue
-    
-    print("Warning: Could not initialize pygame mixer with any available driver")
-    print("Audio playback will be disabled")
+    try:
+        # First try to init pygame without audio
+        pygame.init()
+        if not pygame.get_init():
+            print("Failed to initialize pygame")
+            return False
+            
+        drivers = ['pulseaudio', 'alsa', 'disk', 'dummy']
+        for driver in drivers:
+            try:
+                os.environ['SDL_AUDIODRIVER'] = driver
+                if pygame.mixer.get_init():
+                    pygame.mixer.quit()  # Clean up any existing mixer
+                pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
+                audio_enabled = True
+                print(f"Successfully initialized pygame audio with {driver} driver")
+                return True
+            except Exception as e:
+                print(f"Failed to initialize audio with {driver} driver: {e}")
+                continue
+        
+        print("Warning: Could not initialize pygame mixer with any available driver")
+        print("Audio playback will be disabled")
+        return False
+    except Exception as e:
+        print(f"Failed to initialize pygame: {e}")
+        return False
+
+# Try to initialize audio but don't crash if it fails
+try:
+    audio_enabled = init_pygame_audio()
+except Exception as e:
+    print(f"Audio initialization completely failed: {e}")
     audio_enabled = False
 
-# Try to initialize audio
-init_pygame_audio()
+print(f"Audio enabled: {audio_enabled}")
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
@@ -172,19 +188,18 @@ def stop_current_speech():
         return
         
     try:
-        if pygame.mixer.get_init():
-            pygame.mixer.music.stop()
-        else:
-            # Try to reinitialize the mixer
+        if pygame.get_init() and pygame.mixer.get_init():
             try:
-                pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
-                print("Reinitialized pygame mixer in stop_current_speech")
+                pygame.mixer.music.stop()
             except Exception as e:
-                print(f"Failed to reinitialize mixer: {e}")
-                audio_enabled = False
+                print(f"Error stopping music: {e}")
+        else:
+            print("Mixer not initialized, nothing to stop")
     except Exception as e:
-        print(f"Error stopping speech: {e}")
-        audio_enabled = False
+        print(f"Error accessing pygame mixer: {e}")
+    finally:
+        # Don't disable audio on stop errors
+        pass
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
@@ -197,15 +212,10 @@ def speak_text(text, force=False):
         
     if not is_muted or force:
         try:
-            # Ensure mixer is initialized
-            if not pygame.mixer.get_init():
-                try:
-                    pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
-                    print("Reinitialized pygame mixer")
-                except Exception as e:
-                    print(f"Failed to reinitialize mixer: {e}")
-                    audio_enabled = False
-                    return
+            # Check if pygame and mixer are properly initialized
+            if not pygame.get_init() or not pygame.mixer.get_init():
+                print("Pygame or mixer not initialized")
+                return
             
             stop_current_speech()  # Stop any existing speech
             
@@ -231,11 +241,13 @@ def speak_text(text, force=False):
                         pygame.time.Clock().tick(10)
                 except Exception as e:
                     print(f"Failed to play audio: {e}")
-                    audio_enabled = False
+                    # Don't disable audio on playback errors
+                    return
                     
         except Exception as e:
             print(f"Speech error: {e}")
-            audio_enabled = False
+            # Don't disable audio on general errors
+            return
 
 class MuteRequest(BaseModel):
     mute: bool
