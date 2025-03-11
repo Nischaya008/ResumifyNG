@@ -5,8 +5,34 @@ builder = "nixpacks"
 startCommand = "cd /app && uvicorn main:app --host 0.0.0.0 --port=${PORT}"
 
 [phases.setup]
-nixPkgs = ["python311", "python311Packages.pip", "python311Packages.virtualenv", "ffmpeg", "espeak-ng"]
-aptPkgs = ["python3-venv", "libglib2.0-0", "libglib2.0-dev"]
+nixPkgs = [
+    "python311",
+    "python311Packages.pip",
+    "python311Packages.virtualenv",
+    "ffmpeg",
+    "espeak-ng",
+    "glib",
+    "pkg-config",
+    "SDL2",
+    "SDL2_mixer"
+]
+aptPkgs = [
+    "python3-venv",
+    "libglib2.0-0",
+    "libglib2.0-dev",
+    "libsdl2-2.0-0",
+    "libsdl2-mixer-2.0-0",
+    "libsdl2-dev",
+    "libsdl2-mixer-dev",
+    "libasound2-dev",
+    "libportaudio2",
+    "libportaudiocpp0",
+    "portaudio19-dev",
+    "ffmpeg"
+]
+
+[phases.setup.env]
+SDL_AUDIODRIVER = "disk"
 
 [phases.install]
 cmds = [
