@@ -4,6 +4,7 @@ import './InterviewPage.css'
 import { FiSend, FiMessageCircle, FiVolume2, FiVolumeX, FiMic, FiMicOff, FiDownload } from 'react-icons/fi'
 import axiosInstance from '../config/axios'
 import { endpoints } from '../config/api'
+import AudioPlayer from './AudioPlayer'
 
 function InterviewPage() {
   const [messages, setMessages] = useState([])
@@ -14,6 +15,7 @@ function InterviewPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [userScrolled, setUserScrolled] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [currentAudioUrl, setCurrentAudioUrl] = useState(null)
   
   const messagesEndRef = useRef(null)
   const messagesContainerRef = useRef(null)
@@ -24,6 +26,11 @@ function InterviewPage() {
     try {
       const newMuteState = !isMuted
       setIsMuted(newMuteState)
+      
+      // Clear current audio if muting
+      if (newMuteState) {
+        setCurrentAudioUrl(null)
+      }
       
       // Send mute state to backend
       await axiosInstance.post(endpoints.toggleMute, {
@@ -73,6 +80,13 @@ function InterviewPage() {
           })
           setMessages(prev => [...prev, { text: data.message, sender: 'ai' }])
           lastMessageRef.current = data.message
+          
+          // Handle audio URL if available
+          if (data.audio_url && data.speech_ready) {
+            // Construct full URL using backend base URL
+            const fullAudioUrl = `${import.meta.env.VITE_API_BASE_URL}${data.audio_url}`
+            setCurrentAudioUrl(fullAudioUrl)
+          }
         }
       }
     })
@@ -122,6 +136,7 @@ function InterviewPage() {
             last_message: null
           })
           setIsMuted(true)
+          setCurrentAudioUrl(null) // Stop any playing audio
         } catch (error) {
           console.error('Error auto-muting:', error)
         }
@@ -402,6 +417,11 @@ function InterviewPage() {
             <FiSend size={28} strokeWidth={1.5} />
           </button>
         </form>
+        <AudioPlayer
+          audioUrl={currentAudioUrl}
+          isMuted={isMuted}
+          onEnded={() => setCurrentAudioUrl(null)}
+        />
         <div className="disclaimer">
           AI Interviewer may occasionally generate incorrect responses during conversations. If the interviewer behaves unexpectedly, please reload the page. I am continuously improving the experience. Thank you for your patience!
         </div>
