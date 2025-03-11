@@ -88,10 +88,21 @@ try:
     # Force dummy driver for headless environment
     os.environ['SDL_AUDIODRIVER'] = 'dummy'
     os.environ['AUDIODEV'] = 'null'
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'  # Also set video driver to dummy
     
-    pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
-    audio_enabled = True
-    logger.info("Audio system initialized successfully with dummy driver")
+    # Initialize pygame first
+    pygame.init()
+    
+    # Then initialize the mixer with specific settings
+    pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=4096)
+    pygame.mixer.init()
+    
+    # Verify mixer is actually initialized
+    if pygame.mixer.get_init():
+        audio_enabled = True
+        logger.info("Audio system initialized successfully with dummy driver")
+    else:
+        logger.warning("Mixer initialization failed, continuing without audio")
 except Exception as e:
     logger.error(f"Failed to initialize audio system: {e}")
     logger.warning("Continuing without audio playback")
@@ -169,9 +180,18 @@ def stop_current_speech():
     """Stop the current speech if any"""
     if audio_enabled:
         try:
-            pygame.mixer.music.stop()
+            if pygame.mixer.get_init():
+                if pygame.mixer.music.get_busy():
+                    pygame.mixer.music.stop()
+                pygame.mixer.music.unload()
         except Exception as e:
             logger.error(f"Error stopping speech: {e}")
+            # Try to reinitialize mixer on error
+            try:
+                pygame.mixer.quit()
+                pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
+            except:
+                pass
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
@@ -191,16 +211,36 @@ def speak_text(text, force=False):
                     generate_speech(text, cache_path)
                 
                 try:
-                    # Play the audio with faster playback rate
+                    # Ensure mixer is initialized
+                    if not pygame.mixer.get_init():
+                        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
+                    
+                    # Load and play the audio
                     pygame.mixer.music.load(str(cache_path))
                     pygame.mixer.music.play()
                     logger.debug("Started audio playback")
                     
-                    # Wait for audio to finish
+                    # Wait for audio to finish with timeout
+                    start_time = time.time()
+                    timeout = 30  # Maximum wait time in seconds
+                    
                     while pygame.mixer.music.get_busy():
                         pygame.time.Clock().tick(10)
+                        if time.time() - start_time > timeout:
+                            logger.warning("Audio playback timed out")
+                            break
+                            
+                    # Ensure cleanup
+                    pygame.mixer.music.unload()
+                    
                 except Exception as e:
                     logger.error(f"Error playing audio: {e}")
+                    # Try to reinitialize mixer on error
+                    try:
+                        pygame.mixer.quit()
+                        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
+                    except:
+                        pass
                     
         except Exception as e:
             logger.error(f"Speech error: {e}")
