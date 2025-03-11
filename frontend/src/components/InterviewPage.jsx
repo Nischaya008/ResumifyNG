@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Pusher from 'pusher-js'
 import './InterviewPage.css'
 import { FiSend, FiMessageCircle, FiVolume2, FiVolumeX, FiMic, FiMicOff, FiDownload } from 'react-icons/fi'
@@ -7,6 +8,7 @@ import { endpoints } from '../config/api'
 import AudioPlayer from './AudioPlayer'
 
 function InterviewPage() {
+  const navigate = useNavigate()
   const [messages, setMessages] = useState([])
   const [inputMessage, setInputMessage] = useState('')
   const [isConnected, setIsConnected] = useState(false)
@@ -302,6 +304,24 @@ function InterviewPage() {
     setIsRecording(false)
   }
 
+  const handleLeaveInterview = async () => {
+    try {
+      // Clean up Pusher connection
+      if (pusherChannel) {
+        pusherChannel.unbind_all()
+        pusherChannel.unsubscribe('interview-channel')
+      }
+
+      // Clear local storage
+      localStorage.removeItem('resumeData')
+
+      // Navigate to home page
+      navigate('/')
+    } catch (error) {
+      console.error('Error leaving interview:', error)
+    }
+  }
+
   const downloadTranscript = () => {
     // Create transcript content with watermark
     const watermark = "AI Interview transcript from https://resumifyng.vercel.app\n\n";
@@ -335,6 +355,13 @@ function InterviewPage() {
           <FiMessageCircle className="header-icon" />
           <h1>Technical Interview Session | ResumifyNG</h1>
           <div className="header-controls">
+            <button
+              className="leave-button"
+              onClick={handleLeaveInterview}
+              title="Leave Interview"
+            >
+              Leave Interview
+            </button>
             <button
               className="download-button"
               onClick={downloadTranscript}
