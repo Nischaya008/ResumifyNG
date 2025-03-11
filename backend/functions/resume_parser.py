@@ -168,7 +168,11 @@ router = APIRouter()
 
 @router.post("/upload_resume")
 async def upload_resume(file: UploadFile = File(...)):
-    file_location = f"temp/{file.filename}"
+    # Create temp directory if it doesn't exist
+    temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    file_location = os.path.join(temp_dir, file.filename)
     try:
         with open(file_location, "wb+") as file_object:
             file_object.write(file.file.read())
@@ -202,8 +206,11 @@ async def upload_resume(file: UploadFile = File(...)):
         logging.error(f"Error processing file: {e}")
         return JSONResponse(content={"error": "An error occurred while processing the file."}, status_code=500)
     finally:
-        if os.path.exists(file_location):
-            os.remove(file_location)
+        try:
+            if os.path.exists(file_location):
+                os.remove(file_location)
+        except Exception as e:
+            logging.error(f"Error cleaning up temp file: {e}")
 
 @router.post("/generate_ats")
 async def generate_ats(resume_data: dict, job_description: str = Body(None)):
