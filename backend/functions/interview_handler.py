@@ -12,7 +12,7 @@ For deployment:
    - Windows: Include ffmpeg.exe in 'backend/bin/windows/ffmpeg.exe'
    - Linux: Include ffmpeg in 'backend/bin/linux/ffmpeg'
    - MacOS: Include ffmpeg in 'backend/bin/macos/ffmpeg'
-   
+    
 The system will:
 1. Check FFMPEG_PATH environment variable
 2. Look for platform-specific binary in backend/bin directory
@@ -77,8 +77,15 @@ else:
 # Initialize router first
 router = APIRouter()
 
-# Initialize pygame mixer for audio playback
-pygame.mixer.init()
+# Initialize pygame mixer with error handling
+audio_enabled = False
+try:
+    pygame.mixer.init()
+    audio_enabled = True
+    print("Audio system initialized successfully")
+except Exception as e:
+    print(f"Failed to initialize audio system: {e}")
+    print("Continuing without audio playback")
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
@@ -92,6 +99,7 @@ def get_cache_path(text: str) -> pathlib.Path:
     """Generate a cache file path for the given text"""
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
+
 def generate_speech(text: str, cache_path: pathlib.Path):
     """Generate speech audio file using gTTS and adjust speed with pydub if available"""
     def get_temp_path():
@@ -112,13 +120,13 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             audio._data = None
             
             # Process and save directly to cache
-            # Speed up by 3x for faster speech
+            # Speed up by 2x for faster speech
             faster_audio = audio.speedup(playback_speed=2.0)
             faster_audio.export(str(cache_path), format="mp3")
             # Close the file handle
             faster_audio._data = None
             
-            print("Successfully processed audio with pydub at 3x speed")
+            print("Successfully processed audio with pydub at 2x speed")
             # Ensure handles are released before cleanup
             time.sleep(0.5)
             
@@ -143,14 +151,18 @@ def generate_speech(text: str, cache_path: pathlib.Path):
 
 def stop_current_speech():
     """Stop the current speech if any"""
-    pygame.mixer.music.stop()
+    if audio_enabled:
+        try:
+            pygame.mixer.music.stop()
+        except Exception as e:
+            print(f"Error stopping speech: {e}")
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
     global is_muted
     
-    # Only proceed if not muted or forced
-    if not is_muted or force:
+    # Only proceed if audio is enabled and not muted or forced
+    if audio_enabled and (not is_muted or force):
         try:
             stop_current_speech()  # Stop any existing speech
             
@@ -162,13 +174,16 @@ def speak_text(text, force=False):
                 if not cache_path.exists():
                     generate_speech(text, cache_path)
                 
-                # Play the audio with faster playback rate
-                pygame.mixer.music.load(str(cache_path))
-                pygame.mixer.music.play()
-                
-                # Wait for audio to finish
-                while pygame.mixer.music.get_busy():
-                    pygame.time.Clock().tick(10)
+                try:
+                    # Play the audio with faster playback rate
+                    pygame.mixer.music.load(str(cache_path))
+                    pygame.mixer.music.play()
+                    
+                    # Wait for audio to finish
+                    while pygame.mixer.music.get_busy():
+                        pygame.time.Clock().tick(10)
+                except Exception as e:
+                    print(f"Error playing audio: {e}")
                     
         except Exception as e:
             print(f"Speech error: {e}")
@@ -185,7 +200,7 @@ async def toggle_mute(request: MuteRequest):
     
     if is_muted:
         stop_current_speech()  # Immediately stop speech when muted
-    elif request.last_message:
+    elif request.last_message and audio_enabled:
         # Speak the last message when unmuting
         threading.Thread(target=speak_text, args=(request.last_message, True)).start()
     
@@ -358,12 +373,13 @@ async def start_interview(request: InterviewRequest):
                 'type': 'ai_response',
                 'message': cleaned_response,
                 'message_id': message_id,
-                'speech_ready': True
+                'speech_ready': audio_enabled
             })
             
-            # Then start speaking
-            stop_current_speech()
-            speak_text(cleaned_response)
+            # Then start speaking if audio is enabled
+            if audio_enabled:
+                stop_current_speech()
+                speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
@@ -460,12 +476,13 @@ async def send_message(request: MessageRequest):
                 'type': 'ai_response',
                 'message': cleaned_response,
                 'message_id': message_id,
-                'speech_ready': True
+                'speech_ready': audio_enabled
             })
             
-            # Then start speaking
-            stop_current_speech()
-            speak_text(cleaned_response)
+            # Then start speaking if audio is enabled
+            if audio_enabled:
+                stop_current_speech()
+                speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
