@@ -80,13 +80,16 @@ router = APIRouter()
 # Global audio state
 audio_enabled = False
 
-# Initialize pygame mixer for audio playback
+# Initialize pygame with specific audio driver
 try:
-    pygame.mixer.init()
+    pygame.init()
+    pygame.mixer.init(44100, -16, 2, 2048)
     audio_enabled = True
+    print("Successfully initialized pygame audio")
 except Exception as e:
     print(f"Warning: Could not initialize pygame mixer: {e}")
     print("Audio playback will be disabled")
+    raise  # Re-raise the exception since audio is required
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
@@ -151,21 +154,29 @@ def generate_speech(text: str, cache_path: pathlib.Path):
 
 def stop_current_speech():
     """Stop the current speech if any"""
-    global audio_enabled
-    if audio_enabled:
-        try:
+    try:
+        if pygame.mixer.get_init():
             pygame.mixer.music.stop()
-        except Exception as e:
-            print(f"Error stopping speech: {e}")
-            audio_enabled = False
+        else:
+            # Try to reinitialize the mixer
+            pygame.mixer.init(44100, -16, 2, 2048)
+            print("Reinitialized pygame mixer in stop_current_speech")
+    except Exception as e:
+        print(f"Error stopping speech: {e}")
+        raise  # Re-raise since audio is required
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
     global is_muted, audio_enabled
     
-    # Only proceed if audio is enabled and not muted (or forced)
-    if audio_enabled and (not is_muted or force):
+    # Only proceed if not muted or forced
+    if not is_muted or force:
         try:
+            # Ensure mixer is initialized
+            if not pygame.mixer.get_init():
+                pygame.mixer.init(44100, -16, 2, 2048)
+                print("Reinitialized pygame mixer")
+            
             stop_current_speech()  # Stop any existing speech
             
             # Check mute state again in case it changed
@@ -186,7 +197,7 @@ def speak_text(text, force=False):
                     
         except Exception as e:
             print(f"Speech error: {e}")
-            audio_enabled = False  # Disable audio on error
+            raise  # Re-raise since audio is required
 
 class MuteRequest(BaseModel):
     mute: bool
