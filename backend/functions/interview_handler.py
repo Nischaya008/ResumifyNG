@@ -21,6 +21,7 @@ The system will:
 """
 
 from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import FileResponse
 from typing import Dict, Any
 import json
 import mimetypes
@@ -514,16 +515,12 @@ async def get_audio(audio_hash: str):
         if not audio_path.exists():
             raise HTTPException(status_code=404, detail="Audio file not found")
             
-        # Read the file content
-        with open(audio_path, "rb") as f:
-            content = f.read()
-            
-        # Return the audio file with correct headers
-        return Response(
-            content=content,
+        # Return the audio file using FileResponse for better performance
+        return FileResponse(
+            path=audio_path,
             media_type="audio/mpeg",
+            filename=f"{audio_hash}.mp3",
             headers={
-                "Content-Disposition": f"attachment; filename={audio_hash}.mp3",
                 "Cache-Control": "public, max-age=31536000"  # Cache for 1 year
             }
         )
