@@ -122,3 +122,14 @@
   color: rgba(var(--text-rgb), 0.7);
   text-align: center;
 }
+
+.file-upload-disclaimer {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: rgba(var(--accent-rgb), 0.9);
+  text-align: center;
+  font-style: italic;
+  padding: 0.5rem;
+  background-color: rgba(var(--accent-rgb), 0.1);
+  border-radius: 6px;
+}
