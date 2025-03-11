@@ -20,9 +20,10 @@ The system will:
 4. Fall back to normal speed if ffmpeg is unavailable
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from typing import Dict, Any
 import json
+import mimetypes
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
@@ -356,12 +357,16 @@ async def start_interview(request: InterviewRequest):
             if not cache_path.exists():
                 generate_speech(cleaned_response, cache_path)
             
-            # Once speech is ready, send the actual message
+            # Get audio file hash for URL
+            audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+            
+            # Once speech is ready, send the actual message with audio URL
             pusher.trigger('interview-channel', 'ai-response', {
                 'type': 'ai_response',
                 'message': cleaned_response,
                 'message_id': message_id,
-                'speech_ready': audio_enabled
+                'speech_ready': audio_enabled,
+                'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
             })
             
             # Then generate speech if audio is enabled
@@ -458,12 +463,16 @@ async def send_message(request: MessageRequest):
             if not cache_path.exists():
                 generate_speech(cleaned_response, cache_path)
             
-            # Once speech is ready, send the actual message
+            # Get audio file hash for URL
+            audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+            
+            # Once speech is ready, send the actual message with audio URL
             pusher.trigger('interview-channel', 'ai-response', {
                 'type': 'ai_response',
                 'message': cleaned_response,
                 'message_id': message_id,
-                'speech_ready': audio_enabled
+                'speech_ready': audio_enabled,
+                'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
             })
             
             # Then generate speech if audio is enabled
@@ -494,3 +503,30 @@ def generate_appropriate_response(message: str, sentiment: tuple[float, float]) 
         Please let me know your preference."""
     
     return None  # Continue with normal interview flow
+
+@router.get("/audio/{audio_hash}")
+async def get_audio(audio_hash: str):
+    """Serve the audio file for a given hash"""
+    try:
+        # Construct the file path from hash
+        audio_path = CACHE_DIR / f"{audio_hash}.mp3"
+        
+        if not audio_path.exists():
+            raise HTTPException(status_code=404, detail="Audio file not found")
+            
+        # Read the file content
+        with open(audio_path, "rb") as f:
+            content = f.read()
+            
+        # Return the audio file with correct headers
+        return Response(
+            content=content,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": f"attachment; filename={audio_hash}.mp3",
+                "Cache-Control": "public, max-age=31536000"  # Cache for 1 year
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error serving audio file: {e}")
+        raise HTTPException(status_code=500, detail="Error serving audio file")
