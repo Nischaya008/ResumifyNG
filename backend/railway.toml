@@ -13,35 +13,28 @@ NIXPACKS_PYTHON_VERSION = "3.11"
 PATH = "/nix/var/nix/profiles/default/bin:$PATH"
 LD_LIBRARY_PATH = "/nix/var/nix/profiles/default/lib:/nix/var/nix/profiles/default/lib64:$LD_LIBRARY_PATH"
 PYTHONPATH = "/nix/var/nix/profiles/default/lib/python3.11/site-packages:$PYTHONPATH"
-SDL_AUDIODRIVER = "pulseaudio"
-AUDIODEV = "null"  # Fallback audio device
+SDL_AUDIODRIVER = "dummy"
+AUDIODEV = "null"
 FFMPEG_PATH = "/nix/var/nix/profiles/default/bin/ffmpeg"
 
 [phases.setup]
 nixPkgs = [
     "ffmpeg",
     "glib",
+    "glib.dev",
     "pkg-config",
     "gcc",
     "python311",
+    "python311Packages.pygame",
     "sdl2",
     "sdl2_mixer",
-    "gstreamer",
-    "gst-plugins-base",
-    "gst-plugins-good",
-    "gst-plugins-bad",
-    "gst-plugins-ugly",
-    "gst-libav",
     "alsa-lib",
-    "pulseaudio",
-    "libpulseaudio",
-    "portaudio"
+    "alsa-utils",
+    "pulseaudio"
 ]
 
 [phases.build]
 cmds = [
-    "mkdir -p /nix/var/nix/profiles/default/lib/gstreamer-1.0",
-    "ln -sf /nix/var/nix/profiles/default/lib/gstreamer-1.0/* /nix/var/nix/profiles/default/lib/",
     "mkdir -p /tmp/tts_cache && chmod 777 /tmp/tts_cache",
     "ldconfig || true"
 ]
