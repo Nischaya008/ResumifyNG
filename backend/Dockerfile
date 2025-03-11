@@ -32,8 +32,6 @@ COPY . .
 EXPOSE 8080
 
 # Set environment variables
-ENV SDL_AUDIODRIVER=dummy
-ENV AUDIODEV=null
 ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:$PYTHONPATH
 ENV PATH="/usr/local/bin:$PATH"
 
