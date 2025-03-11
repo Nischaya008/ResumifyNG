@@ -6,7 +6,7 @@ startCommand = "cd /app && uvicorn main:app --host 0.0.0.0 --port=${PORT}"
 
 [phases.setup]
 nixPkgs = ["python311", "python311Packages.pip", "python311Packages.virtualenv", "ffmpeg", "espeak-ng"]
-aptPkgs = ["python3-venv"]
+aptPkgs = ["python3-venv", "libglib2.0-0", "libglib2.0-dev"]
 
 [phases.install]
 cmds = [
