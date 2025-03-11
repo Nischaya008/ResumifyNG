@@ -82,29 +82,19 @@ else:
 # Initialize router first
 router = APIRouter()
 
-# Initialize pygame mixer with error handling and multiple attempts
+# Initialize pygame mixer with error handling and dummy driver
 audio_enabled = False
-MAX_INIT_ATTEMPTS = 3
-INIT_DRIVERS = ['pulseaudio', 'alsa', 'dummy']
-
-for driver in INIT_DRIVERS:
-    if audio_enabled:
-        break
-        
-    for attempt in range(MAX_INIT_ATTEMPTS):
-        try:
-            os.environ['SDL_AUDIODRIVER'] = driver
-            pygame.mixer.quit()  # Ensure clean state
-            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
-            audio_enabled = True
-            logger.info(f"Audio system initialized successfully with driver: {driver}")
-            break
-        except Exception as e:
-            logger.warning(f"Failed to initialize audio with {driver} (attempt {attempt + 1}): {e}")
-            time.sleep(1)  # Brief delay between attempts
-
-if not audio_enabled:
-    logger.warning("Failed to initialize audio system with all drivers. Continuing without audio playback")
+try:
+    # Force dummy driver for headless environment
+    os.environ['SDL_AUDIODRIVER'] = 'dummy'
+    os.environ['AUDIODEV'] = 'null'
+    
+    pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
+    audio_enabled = True
+    logger.info("Audio system initialized successfully with dummy driver")
+except Exception as e:
+    logger.error(f"Failed to initialize audio system: {e}")
+    logger.warning("Continuing without audio playback")
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("/tmp/tts_cache")  # Use /tmp for deployment
