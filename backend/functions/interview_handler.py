@@ -82,28 +82,18 @@ else:
 # Initialize router first
 router = APIRouter()
 
-# Initialize pygame mixer with error handling
-audio_enabled = False
+# For web deployment, we don't need pygame's audio system
+# We only generate audio files that are played by the client's browser
+audio_enabled = True  # Always true since we're just generating files
 try:
-    # Only set video driver to dummy since we don't need display
+    # Only initialize pygame for its other utilities
     os.environ['SDL_VIDEODRIVER'] = 'dummy'
-    
-    # Initialize pygame first
+    os.environ['SDL_AUDIODRIVER'] = 'dummy'  # Prevent audio initialization attempts
     pygame.init()
-    
-    # Then initialize the mixer with specific settings
-    pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
-    pygame.mixer.init()
-    
-    # Verify mixer is actually initialized
-    if pygame.mixer.get_init():
-        audio_enabled = True
-        logger.info("Audio system initialized successfully")
-    else:
-        logger.warning("Mixer initialization failed, continuing without audio")
+    logger.info("Initialized pygame for utility functions only")
 except Exception as e:
-    logger.error(f"Failed to initialize audio system: {e}")
-    logger.warning("Continuing without audio playback")
+    logger.error(f"Failed to initialize pygame: {e}")
+    # Continue anyway since we don't need pygame's audio
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("/tmp/tts_cache")  # Use /tmp for deployment
@@ -174,74 +164,22 @@ def generate_speech(text: str, cache_path: pathlib.Path):
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
-def stop_current_speech():
-    """Stop the current speech if any"""
-    if audio_enabled:
-        try:
-            if pygame.mixer.get_init():
-                if pygame.mixer.music.get_busy():
-                    pygame.mixer.music.stop()
-                pygame.mixer.music.unload()
-        except Exception as e:
-            logger.error(f"Error stopping speech: {e}")
-            # Try to reinitialize mixer on error
-            try:
-                pygame.mixer.quit()
-                pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
-            except:
-                pass
-
 def speak_text(text, force=False):
-    """Function to speak text in a separate thread with caching"""
+    """Generate speech audio file (actual playback happens in browser)"""
     global is_muted
     
-    # Only proceed if audio is enabled and not muted or forced
-    if audio_enabled and (not is_muted or force):
+    # Only proceed if not muted or forced
+    if not is_muted or force:
         try:
-            stop_current_speech()  # Stop any existing speech
+            cache_path = get_cache_path(text)
             
-            # Check mute state again in case it changed
-            if not is_muted or force:
-                cache_path = get_cache_path(text)
-                
-                # Generate audio file if not in cache
-                if not cache_path.exists():
-                    generate_speech(text, cache_path)
-                
-                try:
-                    # Ensure mixer is initialized
-                    if not pygame.mixer.get_init():
-                        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
-                    
-                    # Load and play the audio
-                    pygame.mixer.music.load(str(cache_path))
-                    pygame.mixer.music.play()
-                    logger.debug("Started audio playback")
-                    
-                    # Wait for audio to finish with timeout
-                    start_time = time.time()
-                    timeout = 30  # Maximum wait time in seconds
-                    
-                    while pygame.mixer.music.get_busy():
-                        pygame.time.Clock().tick(10)
-                        if time.time() - start_time > timeout:
-                            logger.warning("Audio playback timed out")
-                            break
-                            
-                    # Ensure cleanup
-                    pygame.mixer.music.unload()
-                    
-                except Exception as e:
-                    logger.error(f"Error playing audio: {e}")
-                    # Try to reinitialize mixer on error
-                    try:
-                        pygame.mixer.quit()
-                        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
-                    except:
-                        pass
-                    
+            # Generate audio file if not in cache
+            if not cache_path.exists():
+                generate_speech(text, cache_path)
+                logger.debug(f"Generated audio file at {cache_path}")
+            
         except Exception as e:
-            logger.error(f"Speech error: {e}")
+            logger.error(f"Speech generation error: {e}")
 
 class MuteRequest(BaseModel):
     mute: bool
@@ -249,14 +187,13 @@ class MuteRequest(BaseModel):
 
 @router.post("/toggle_mute")
 async def toggle_mute(request: MuteRequest):
-    """Toggle mute state and optionally speak the last message"""
+    """Toggle mute state and optionally prepare the last message audio"""
     global is_muted
     is_muted = request.mute
     
-    if is_muted:
-        stop_current_speech()  # Immediately stop speech when muted
-    elif request.last_message and audio_enabled:
-        # Speak the last message when unmuting
+    # When unmuting, ensure the last message's audio is ready
+    if not is_muted and request.last_message:
+        # Generate audio in background thread if needed
         threading.Thread(target=speak_text, args=(request.last_message, True)).start()
     
     return {"status": "success", "muted": is_muted}
@@ -427,9 +364,8 @@ async def start_interview(request: InterviewRequest):
                 'speech_ready': audio_enabled
             })
             
-            # Then start speaking if audio is enabled
+            # Then generate speech if audio is enabled
             if audio_enabled:
-                stop_current_speech()
                 speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
@@ -530,9 +466,8 @@ async def send_message(request: MessageRequest):
                 'speech_ready': audio_enabled
             })
             
-            # Then start speaking if audio is enabled
+            # Then generate speech if audio is enabled
             if audio_enabled:
-                stop_current_speech()
                 speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
