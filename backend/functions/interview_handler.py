@@ -140,8 +140,8 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             # Load and process audio
             with open(str(temp_path), 'rb') as audio_file:
                 audio = AudioSegment.from_file(audio_file, format="mp3")
-                # Speed up by 2x for faster speech
-                faster_audio = audio.speedup(playback_speed=2.0)
+                # Speed up by 1.2x for faster speech
+                faster_audio = audio.speedup(playback_speed=1.2)
                 # Export to cache path
                 faster_audio.export(str(cache_path), format="mp3")
                 
