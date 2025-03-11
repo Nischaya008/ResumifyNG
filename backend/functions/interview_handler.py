@@ -23,9 +23,10 @@ The system will:
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import json
-from langchain import PromptTemplate, LLMChain
+from langchain.prompts import PromptTemplate
+from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
-from langchain_community.llms import Together
+from langchain_community.llms.together import Together
 import os
 from pusher import Pusher
 import logging
