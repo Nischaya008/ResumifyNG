@@ -9,4 +9,13 @@ const axiosInstance = axios.create({
   }
 });
 
+// Add request interceptor to handle multipart/form-data
+axiosInstance.interceptors.request.use((config) => {
+  // If the request includes FormData, update the Content-Type header
+  if (config.data instanceof FormData) {
+    config.headers['Content-Type'] = 'multipart/form-data';
+  }
+  return config;
+});
+
 export default axiosInstance;
