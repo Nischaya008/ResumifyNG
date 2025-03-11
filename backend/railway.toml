@@ -4,10 +4,27 @@ buildCommand = "pip install -r requirements.txt"
 
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/health"
+healthcheckTimeout = 100
 
 [variables]
 PYTHON_VERSION = "3.11"
 NIXPACKS_PYTHON_VERSION = "3.11"
 
 [phases.setup]
-nixPkgs = ["ffmpeg", "glib", "pkg-config", "gcc", "python311", "sdl2", "sdl2_mixer"]
+nixPkgs = [
+    "ffmpeg",
+    "glib",
+    "pkg-config",
+    "gcc",
+    "python311",
+    "sdl2",
+    "sdl2_mixer",
+    "gstreamer",
+    "gst-plugins-base",
+    "gst-plugins-good",
+    "gst-plugins-bad",
+    "gst-plugins-ugly",
+    "gst-libav",
+    "alsa-lib"
+]
