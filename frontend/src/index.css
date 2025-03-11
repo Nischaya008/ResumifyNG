@@ -1,0 +1,131 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: var(--text);
+  background-color: var(--background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Theme colors */
+  --background: #373F51;
+  --background-rgb: 55, 63, 81;
+  --primary: #6C757D;
+  --primary-rgb: 108, 117, 125;
+  --secondary: #A4978E;
+  --secondary-rgb: 164, 151, 142;
+  --accent: #D8C3A5;
+  --accent-rgb: 216, 195, 165;
+  --text: #F5ECE0;
+  --text-rgb: 245, 236, 224;
+}
+
+a {
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: inherit;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--text);
+}
+
+body {
+  margin: 0;
+  display: block;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--text);
+  cursor: none;
+}
+
+/* Custom cursor styling */
+* {
+  cursor: none !important;
+}
+
+.custom-cursor {
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 2147483647;
+  mix-blend-mode: difference;
+  transition: width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
+  transform: translate3d(-50%, -50%, 0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.custom-cursor.hover {
+  width: 30px;
+  height: 30px;
+  background: var(--text);
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--secondary);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  background-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Portal container styles */
+.portal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1000000;
+  pointer-events: none;
+}
+
+.portal-container > * {
+  pointer-events: auto;
+}
+
+/* Cursor container styles */
+.cursor-container {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+.cursor-container > * {
+  pointer-events: none;
+}
+
+/* Remove light mode overrides since we're using a consistent dark theme */

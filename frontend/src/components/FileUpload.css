@@ -1,0 +1,124 @@
+.file-upload-container {
+  background: rgba(var(--primary-rgb), 0.15);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--text);
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+
+.file-upload-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+
+.file-upload-header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.file-upload-header h2 {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.file-upload-description {
+  color: rgba(var(--text-rgb), 0.8);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.file-input-wrapper {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.file-input-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed rgba(var(--secondary-rgb), 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: rgba(var(--background-rgb), 0.7);
+}
+
+.file-input-label:hover {
+  border-color: var(--accent);
+  background-color: rgba(var(--primary-rgb), 0.2);
+}
+
+.file-input-icon {
+  font-size: 2rem;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.file-input-text {
+  color: var(--text);
+  text-align: center;
+}
+
+.file-input {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.file-name-display {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: rgba(var(--secondary-rgb), 0.2);
+  border-radius: 4px;
+  color: var(--text);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-upload-button {
+  background-color: var(--secondary);
+  color: var(--text);
+  border: none;
+  padding: 0.8em 1.5em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.file-upload-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.file-upload-button:disabled {
+  background-color: rgba(var(--primary-rgb), 0.5);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.file-format-info {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: rgba(var(--text-rgb), 0.7);
+  text-align: center;
+}

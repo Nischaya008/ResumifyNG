@@ -1,0 +1,170 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;  /* shorthand for top: 0, right: 0, bottom: 0, left: 0 */
+  background-color: rgba(var(--background-rgb), 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: all;
+}
+
+.modal-content {
+  background: var(--background);
+  padding: 1.5rem;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  margin: 1.5rem;
+  transform: translateZ(0); /* Force GPU acceleration */
+  will-change: transform; /* Optimize animations */
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  color: var(--text);
+  pointer-events: auto;
+  z-index: 1000001; /* Higher than overlay but lower than cursor */
+}
+
+
+.close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--accent);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  background: rgba(var(--text-rgb), 0.1);
+  z-index: 1001;
+}
+
+.close-button:hover {
+  background: rgba(var(--secondary-rgb), 0.3);
+  transform: scale(1.1);
+  color: var(--text);
+}
+
+.score-section {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--secondary), var(--accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.75rem auto;
+  box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
+  position: relative;
+  transition: transform 0.3s ease;
+  border: 2px solid rgba(var(--text-rgb), 0.2);
+}
+
+.score-circle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(var(--accent-rgb), 0.4);
+}
+
+.score-number {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--text);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.recommendations-section {
+  border-top: 1px solid rgba(var(--secondary-rgb), 0.5);
+  padding-top: 0.75rem;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recommendation-item {
+  background: rgba(var(--primary-rgb), 0.2);
+  padding: 0.75rem;
+  margin: 0;
+  border-radius: 8px;
+  line-height: 1.3;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(var(--secondary-rgb), 0.3);
+  font-size: 0.95rem;
+}
+
+.recommendation-item:hover {
+  transform: translateX(4px);
+  background: rgba(var(--primary-rgb), 0.3);
+  border-color: var(--accent);
+}
+
+body.modal-open {
+  overflow: hidden;
+  padding-right: var(--scrollbar-width, 15px); /* Prevent layout shift */
+  position: fixed;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+
+  .score-circle {
+    width: 120px;
+    height: 120px;
+  }
+
+  .score-number {
+    font-size: 2rem;
+  }
+}
+
+/* Create new stacking context for main content */
+#root {
+  isolation: isolate;
+}
+
+.modal-actions {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.interview-button {
+  background-color: var(--accent);
+  color: var(--background);
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.interview-button:hover {
+  background-color: var(--text);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}

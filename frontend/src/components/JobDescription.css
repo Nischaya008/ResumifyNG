@@ -1,0 +1,126 @@
+.job-description-container {
+  background: rgba(var(--primary-rgb), 0.15);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--text);
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -12px;
+}
+
+.job-description-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+
+.job-description-header {
+  margin-bottom: 0.8rem;
+  text-align: center;
+}
+
+.job-description-header h2 {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.job-description-subheader {
+  color: rgba(var(--text-rgb), 0.8);
+  font-size: 1.1rem;
+  margin-bottom: 0.8rem;
+  line-height: 1.4;
+}
+
+.job-description-textarea {
+  width: 98%;
+  min-height: 200px;
+  padding: 1rem;
+  background-color: rgba(var(--background-rgb), 0.7);
+  color: var(--text);
+  border: 1px solid rgba(var(--secondary-rgb), 0.5);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.job-description-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+}
+
+.job-description-textarea::placeholder {
+  color: rgba(var(--text-rgb), 0.5);
+}
+
+.job-description-button {
+  background-color: var(--secondary);
+  color: var(--text);
+  border: none;
+  padding: 0.6em 1.2em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  width: 95%;
+  margin-bottom: 0.8rem;
+}
+
+.job-description-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.job-description-button:disabled {
+  background-color: rgba(var(--primary-rgb), 0.5);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.job-description-tips {
+  background-color: rgba(var(--secondary-rgb), 0.15);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.8rem;
+  border-left: 3px solid var(--accent);
+  width: 98%;
+}
+
+.job-description-tips h3 {
+  color: var(--accent);
+  font-size: 1.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.job-description-tips ul {
+  margin: 0;
+  padding-left: 1.4rem;
+  color: rgba(var(--text-rgb), 0.9);
+}
+
+.job-description-tips li {
+  margin-bottom: 0.4rem;
+  font-size: 1.05rem;
+}
+
+.ats-button-container {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+

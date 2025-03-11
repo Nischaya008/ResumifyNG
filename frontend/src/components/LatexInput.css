@@ -1,0 +1,136 @@
+.latex-editor-container {
+  background: var(--background); /* Use theme background */
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 600px; /* Increased width */
+  margin: 0 auto;
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+}
+
+.latex-editor-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+
+.latex-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(var(--secondary-rgb), 0.5);
+}
+
+.latex-editor-header h2 {
+  margin: 0;
+  color: var(--accent); /* Use theme accent color */
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.latex-editor-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.latex-editor-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #ff5f56; /* Keep the red dot */
+}
+
+.latex-editor-dot:nth-child(2) {
+  background-color: #ffbd2e; /* Keep the yellow dot */
+}
+
+.latex-editor-dot:nth-child(3) {
+  background-color: #27c93f; /* Keep the green dot */
+}
+
+.latex-editor-textarea {
+  width: 100%;
+  min-height: 350px; /* Increased height even more */
+  padding: 1rem;
+  background-color: rgba(var(--background-rgb), 0.8); /* Slightly lighter than container */
+  color: var(--text); /* Use theme text color */
+  border: 1px solid rgba(var(--secondary-rgb), 0.5);
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace; /* Code font */
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  tab-size: 2;
+  overflow-y: auto;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.latex-editor-textarea:focus {
+  outline: none;
+  border-color: var(--accent); /* Use theme accent color */
+  box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.3);
+}
+
+.latex-editor-textarea::placeholder {
+  color: rgba(var(--text-rgb), 0.5);
+}
+
+.latex-editor-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.latex-editor-status {
+  font-size: 0.8rem;
+  color: rgba(var(--text-rgb), 0.7);
+}
+
+.latex-submit-button {
+  background-color: var(--secondary); /* Use theme secondary color */
+  color: var(--text); /* Use theme text color */
+  border: none;
+  padding: 0.8em 1.5em;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.latex-submit-button:hover:not(:disabled) {
+  background-color: var(--accent); /* Use theme accent color on hover */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.latex-submit-button:disabled {
+  background-color: rgba(var(--primary-rgb), 0.5);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Add a subtle line number effect */
+.latex-editor-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.latex-editor-line-numbers {
+  width: 40px;
+  min-height: 350px; /* Match the textarea height */
+  padding: 1rem 0.5rem;
+  background-color: rgba(var(--background-rgb), 0.9);
+  color: rgba(var(--text-rgb), 0.5);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: right;
+  border-right: 1px solid rgba(var(--secondary-rgb), 0.5);
+  user-select: none;
+}
