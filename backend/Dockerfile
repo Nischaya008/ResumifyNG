@@ -38,4 +38,4 @@ ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:$PYTHONPATH
 ENV PATH="/usr/local/bin:$PATH"
 
 # Command to run the application
-CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
