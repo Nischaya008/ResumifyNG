@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import axiosInstance from './config/axios'
+import { endpoints } from './config/api'
 import { BrowserRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom'
 import './App.css'
 import Toast from './components/Toast'
@@ -90,7 +91,7 @@ function AppContent() {
     formData.append('file', file)
 
     try {
-      const response = await axiosInstance.post('/api/upload_resume', formData, {
+      const response = await axiosInstance.post(endpoints.uploadResume, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -123,7 +124,7 @@ function AppContent() {
       const formData = new FormData()
       formData.append('file', latexFile)
 
-      const response = await axiosInstance.post('/api/upload_resume', formData, {
+      const response = await axiosInstance.post(endpoints.uploadResume, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -183,8 +184,8 @@ function AppContent() {
       console.log('Sending data to backend:', requestData)
 
       const [atsResponse, enhanceResponse] = await Promise.all([
-        axiosInstance.post('/api/generate_ats', requestData),
-        axiosInstance.post('/api/enhance_resume', requestData)
+        axiosInstance.post(endpoints.generateATS, requestData),
+        axiosInstance.post(endpoints.enhanceResume, requestData)
       ])
 
       console.log('Received ATS response:', atsResponse.data)
