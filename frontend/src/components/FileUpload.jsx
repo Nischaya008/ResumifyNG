@@ -77,6 +77,9 @@ function FileUpload({ onSubmit, isLoading }) {
       <div className="file-format-info">
         Supported formats: PDF, DOCX
       </div>
+      <div className="file-upload-disclaimer">
+        Processing may take some time due to heavy backend operations. Please be patient!
+      </div>
     </div>
   )
 }
