@@ -41,14 +41,19 @@ aptPkgs = [
 [phases.setup.env]
 SDL_AUDIODRIVER = "disk"
 PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:${PATH}"
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
+PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:/lib/x86_64-linux-gnu:${PATH}"
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
 PULSE_SERVER = "unix:/tmp/pulse.sock"
+PKG_CONFIG_PATH = "/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 
-[phases.setup.commands]
+[phases.preinit]
 cmds = """
+mkdir -p /usr/lib
+apt-get update
+apt-get install -y libglib2.0-0 libglib2.0-dev libgthread-2.0-0
 ldconfig
 ln -sf /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /usr/lib/libgthread-2.0.so.0
+ln -sf /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /lib/x86_64-linux-gnu/libgthread-2.0.so.0
 """
 
 [phases.install]
