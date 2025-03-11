@@ -81,15 +81,28 @@ router = APIRouter()
 audio_enabled = False
 
 # Initialize pygame with specific audio driver
-try:
-    pygame.init()
-    pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
-    audio_enabled = True
-    print("Successfully initialized pygame audio")
-except Exception as e:
-    print(f"Warning: Could not initialize pygame mixer: {e}")
+def init_pygame_audio():
+    global audio_enabled
+    drivers = ['pulseaudio', 'alsa', 'disk', 'dummy']
+    
+    for driver in drivers:
+        try:
+            os.environ['SDL_AUDIODRIVER'] = driver
+            pygame.init()
+            pygame.mixer.init(44100, -16, 2, 2048, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE | pygame.AUDIO_ALLOW_CHANNELS_CHANGE)
+            audio_enabled = True
+            print(f"Successfully initialized pygame audio with {driver} driver")
+            return
+        except Exception as e:
+            print(f"Failed to initialize audio with {driver} driver: {e}")
+            continue
+    
+    print("Warning: Could not initialize pygame mixer with any available driver")
     print("Audio playback will be disabled")
-    audio_enabled = False  # Set audio_enabled to False instead of raising
+    audio_enabled = False
+
+# Try to initialize audio
+init_pygame_audio()
 
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
