@@ -136,21 +136,15 @@ def generate_speech(text: str, cache_path: pathlib.Path):
         logger.debug(f"Generated initial speech file at {temp_path}")
         
         try:
-            # Attempt pydub processing directly to cache_path
-            audio = AudioSegment.from_mp3(str(temp_path))
-            # Close the file handle
-            audio._data = None
-            
-            # Process and save directly to cache
-            # Speed up by 2x for faster speech
-            faster_audio = audio.speedup(playback_speed=2.0)
-            faster_audio.export(str(cache_path), format="mp3")
-            # Close the file handle
-            faster_audio._data = None
-            
+            # Load and process audio
+            with open(str(temp_path), 'rb') as audio_file:
+                audio = AudioSegment.from_file(audio_file, format="mp3")
+                # Speed up by 2x for faster speech
+                faster_audio = audio.speedup(playback_speed=2.0)
+                # Export to cache path
+                faster_audio.export(str(cache_path), format="mp3")
+                
             logger.info("Successfully processed audio with pydub at 2x speed")
-            # Ensure handles are released before cleanup
-            time.sleep(0.5)
             
         except Exception as e:
             logger.error(f"Pydub processing failed: {e}")
