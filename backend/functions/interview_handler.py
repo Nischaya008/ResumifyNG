@@ -82,25 +82,23 @@ else:
 # Initialize router first
 router = APIRouter()
 
-# Initialize pygame mixer with error handling and dummy driver
+# Initialize pygame mixer with error handling
 audio_enabled = False
 try:
-    # Force dummy driver for headless environment
-    os.environ['SDL_AUDIODRIVER'] = 'dummy'
-    os.environ['AUDIODEV'] = 'null'
-    os.environ['SDL_VIDEODRIVER'] = 'dummy'  # Also set video driver to dummy
+    # Only set video driver to dummy since we don't need display
+    os.environ['SDL_VIDEODRIVER'] = 'dummy'
     
     # Initialize pygame first
     pygame.init()
     
     # Then initialize the mixer with specific settings
-    pygame.mixer.pre_init(frequency=22050, size=-16, channels=2, buffer=4096)
+    pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=4096)
     pygame.mixer.init()
     
     # Verify mixer is actually initialized
     if pygame.mixer.get_init():
         audio_enabled = True
-        logger.info("Audio system initialized successfully with dummy driver")
+        logger.info("Audio system initialized successfully")
     else:
         logger.warning("Mixer initialization failed, continuing without audio")
 except Exception as e:
