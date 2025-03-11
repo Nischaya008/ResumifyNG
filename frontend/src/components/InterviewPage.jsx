@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Pusher from 'pusher-js'
-import axios from 'axios'
 import './InterviewPage.css'
 import { FiSend, FiMessageCircle, FiVolume2, FiVolumeX, FiMic, FiMicOff, FiDownload } from 'react-icons/fi'
+import axiosInstance from '../config/axios'
+import { endpoints } from '../config/api'
 
 function InterviewPage() {
   const [messages, setMessages] = useState([])
@@ -25,7 +26,7 @@ function InterviewPage() {
       setIsMuted(newMuteState)
       
       // Send mute state to backend
-      await axios.post('http://localhost:8000/api/toggle_mute', {
+      await axiosInstance.post(endpoints.toggleMute, {
         mute: newMuteState,
         last_message: newMuteState ? null : lastMessageRef.current
       })
@@ -97,7 +98,7 @@ function InterviewPage() {
 
         setIsConnected(true)
         
-        await axios.post('http://localhost:8000/api/start_interview', {
+        await axiosInstance.post(endpoints.startInterview, {
           resume_data: resumeData.resume_data,
           job_description: resumeData.job_description
         })
@@ -116,7 +117,7 @@ function InterviewPage() {
     const handleVisibilityChange = async () => {
       if (document.hidden && !isMuted) {
         try {
-          await axios.post('http://localhost:8000/api/toggle_mute', {
+          await axiosInstance.post(endpoints.toggleMute, {
             mute: true,
             last_message: null
           })
@@ -185,7 +186,7 @@ function InterviewPage() {
       // Ensure we're unmuted before sending the message
       if (isMuted) {
         try {
-          await axios.post('http://localhost:8000/api/toggle_mute', {
+          await axiosInstance.post(endpoints.toggleMute, {
             mute: false,
             last_message: null
           })
@@ -199,7 +200,7 @@ function InterviewPage() {
       setUserScrolled(false) // Reset scroll lock when user sends message
       
       try {
-        await axios.post('http://localhost:8000/api/send_message', {
+        await axiosInstance.post(endpoints.sendMessage, {
           message: messageToSend,
           resume_data: resumeData.resume_data,
           job_description: resumeData.job_description
