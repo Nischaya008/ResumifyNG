@@ -399,6 +399,7 @@ async def start_interview(request: InterviewRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
+            global audio_enabled  # Declare at start of function
             speech_ready = False
             if audio_enabled:
                 try:
@@ -409,7 +410,6 @@ async def start_interview(request: InterviewRequest):
                     speech_ready = True
                 except Exception as e:
                     print(f"Failed to prepare speech: {e}")
-                    global audio_enabled
                     audio_enabled = False
             
             # Send the message regardless of speech status
@@ -515,6 +515,7 @@ async def send_message(request: MessageRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
+            global audio_enabled  # Declare at start of function
             speech_ready = False
             if audio_enabled:
                 try:
@@ -525,7 +526,6 @@ async def send_message(request: MessageRequest):
                     speech_ready = True
                 except Exception as e:
                     print(f"Failed to prepare speech: {e}")
-                    global audio_enabled
                     audio_enabled = False
             
             # Send the message regardless of speech status
