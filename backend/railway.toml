@@ -12,6 +12,7 @@ nixPkgs = [
     "ffmpeg",
     "espeak-ng",
     "glib",
+    "glib.dev",
     "pkg-config",
     "SDL2",
     "SDL2_mixer",
@@ -22,6 +23,7 @@ aptPkgs = [
     "python3-venv",
     "libglib2.0-0",
     "libglib2.0-dev",
+    "libgthread-2.0-0",
     "libsdl2-2.0-0",
     "libsdl2-mixer-2.0-0",
     "libsdl2-dev",
@@ -39,9 +41,15 @@ aptPkgs = [
 [phases.setup.env]
 SDL_AUDIODRIVER = "disk"
 PYTHONPATH = "/app"
-PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:${PATH}"
-LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:${LD_LIBRARY_PATH:-}"
+PATH = "/opt/venv/bin:/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:${PATH}"
+LD_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu:/usr/local/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 PULSE_SERVER = "unix:/tmp/pulse.sock"
+
+[phases.setup.cmds]
+cmds = [
+    "ldconfig",  # Update the shared library cache
+    "ln -sf /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /usr/lib/libgthread-2.0.so.0"  # Create symlink for libgthread
+]
 
 [phases.install]
 cmds = [
@@ -51,12 +59,22 @@ cmds = [
   "cp -r . /app/",
   "cd /app",
   "ls -la",
+  # Update library cache and verify installations
   "ldconfig",
+  "ldconfig -p | grep 'libgthread\|libsdl\|libpulse'",
+  "ls -l /usr/lib/x86_64-linux-gnu/libgthread*",
+  "ls -l /usr/lib/libgthread*",
+  # Start audio services
   "pulseaudio --start --exit-idle-time=-1",
+  # Setup Python environment
   "python -m venv /opt/venv",
   ". /opt/venv/bin/activate",
   "pip install --upgrade pip setuptools wheel",
   "pip install -r requirements.txt",
+  # Verify ffmpeg installation
   "which ffmpeg",
-  "ffmpeg -version"
+  "ffmpeg -version",
+  # Final library verification
+  "ldd /opt/venv/lib/python3.11/site-packages/pygame/_sdl2/libsdl2.so",
+  "ldd $(which python3) | grep 'gthread'"
 ]
