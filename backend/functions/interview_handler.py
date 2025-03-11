@@ -67,30 +67,60 @@ def get_ffmpeg_path():
     # Check system PATH
     return which("ffmpeg")
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 # Set ffmpeg path for pydub
 FFMPEG_PATH = get_ffmpeg_path()
 if FFMPEG_PATH:
     AudioSegment.converter = FFMPEG_PATH
-    print(f"Using ffmpeg from: {FFMPEG_PATH}")
+    logger.info(f"Using ffmpeg from: {FFMPEG_PATH}")
 else:
-    print("ffmpeg not found - speech rate adjustment will be disabled")
+    logger.warning("ffmpeg not found - speech rate adjustment will be disabled")
 
 # Initialize router first
 router = APIRouter()
 
-# Initialize pygame mixer with error handling
+# Initialize pygame mixer with error handling and multiple attempts
 audio_enabled = False
-try:
-    pygame.mixer.init()
-    audio_enabled = True
-    print("Audio system initialized successfully")
-except Exception as e:
-    print(f"Failed to initialize audio system: {e}")
-    print("Continuing without audio playback")
+MAX_INIT_ATTEMPTS = 3
+INIT_DRIVERS = ['pulseaudio', 'alsa', 'dummy']
+
+for driver in INIT_DRIVERS:
+    if audio_enabled:
+        break
+        
+    for attempt in range(MAX_INIT_ATTEMPTS):
+        try:
+            os.environ['SDL_AUDIODRIVER'] = driver
+            pygame.mixer.quit()  # Ensure clean state
+            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=4096)
+            audio_enabled = True
+            logger.info(f"Audio system initialized successfully with driver: {driver}")
+            break
+        except Exception as e:
+            logger.warning(f"Failed to initialize audio with {driver} (attempt {attempt + 1}): {e}")
+            time.sleep(1)  # Brief delay between attempts
+
+if not audio_enabled:
+    logger.warning("Failed to initialize audio system with all drivers. Continuing without audio playback")
 
 # Create cache directory if it doesn't exist
-CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR = pathlib.Path("/tmp/tts_cache")  # Use /tmp for deployment
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    # Test write permissions
+    test_file = CACHE_DIR / "test.txt"
+    test_file.write_text("test")
+    test_file.unlink()
+    logger.info(f"Cache directory initialized at {CACHE_DIR}")
+except Exception as e:
+    logger.error(f"Failed to initialize cache directory: {e}")
+    # Fallback to current directory
+    CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using fallback cache directory: {CACHE_DIR}")
 
 # Global mute state
 is_muted = False
@@ -113,6 +143,7 @@ def generate_speech(text: str, cache_path: pathlib.Path):
         # Generate initial speech with gTTS
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(str(temp_path))
+        logger.debug(f"Generated initial speech file at {temp_path}")
         
         try:
             # Attempt pydub processing directly to cache_path
@@ -127,17 +158,17 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             # Close the file handle
             faster_audio._data = None
             
-            print("Successfully processed audio with pydub at 2x speed")
+            logger.info("Successfully processed audio with pydub at 2x speed")
             # Ensure handles are released before cleanup
             time.sleep(0.5)
             
         except Exception as e:
-            print(f"Pydub processing failed: {e}")
+            logger.error(f"Pydub processing failed: {e}")
             # If pydub fails, copy the original file
             shutil.copy2(str(temp_path), str(cache_path))
             
     except Exception as e:
-        print(f"Speech generation failed: {e}")
+        logger.error(f"Speech generation failed: {e}")
         # Final fallback: direct save
         tts.save(str(cache_path))
         
@@ -148,7 +179,7 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             if temp_path.exists():
                 temp_path.unlink()
         except Exception as e:
-            print(f"Cleanup error: {e}")
+            logger.error(f"Cleanup error: {e}")
 
 def stop_current_speech():
     """Stop the current speech if any"""
@@ -156,7 +187,7 @@ def stop_current_speech():
         try:
             pygame.mixer.music.stop()
         except Exception as e:
-            print(f"Error stopping speech: {e}")
+            logger.error(f"Error stopping speech: {e}")
 
 def speak_text(text, force=False):
     """Function to speak text in a separate thread with caching"""
@@ -179,15 +210,16 @@ def speak_text(text, force=False):
                     # Play the audio with faster playback rate
                     pygame.mixer.music.load(str(cache_path))
                     pygame.mixer.music.play()
+                    logger.debug("Started audio playback")
                     
                     # Wait for audio to finish
                     while pygame.mixer.music.get_busy():
                         pygame.time.Clock().tick(10)
                 except Exception as e:
-                    print(f"Error playing audio: {e}")
+                    logger.error(f"Error playing audio: {e}")
                     
         except Exception as e:
-            print(f"Speech error: {e}")
+            logger.error(f"Speech error: {e}")
 
 class MuteRequest(BaseModel):
     mute: bool
@@ -208,10 +240,6 @@ async def toggle_mute(request: MuteRequest):
     return {"status": "success", "muted": is_muted}
 
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 # Initialize Together.ai client
 together_api_key = os.getenv("TOGETHER_API_KEY")
