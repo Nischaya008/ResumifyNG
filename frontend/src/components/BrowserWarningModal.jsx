@@ -7,29 +7,36 @@ function BrowserWarningModal({ isOpen, onClose }) {
   const [showToast, setShowToast] = useState(false);
 
   const handleOpenChrome = () => {
-    // Create a custom URL with x-browser scheme
     const currentUrl = window.location.href;
-    const chromeUrl = `x-browser://chrome/${encodeURIComponent(currentUrl)}`;
     
-    try {
-      // Create a hidden link and click it
-      const link = document.createElement('a');
-      link.href = chromeUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Close the modal after a short delay
-      setTimeout(() => {
-        onClose();
-      }, 500);
-    } catch (error) {
-      console.error('Failed to open Chrome:', error);
-      // Show download link instead
-      window.open('https://www.google.com/chrome', '_blank');
+    // Try multiple protocols that might work
+    const protocols = [
+      `microsoft-edge-http://${currentUrl}`, // This actually triggers Chrome on Windows if it's default
+      `microsoft-edge:${currentUrl}`,
+      `chrome://${currentUrl}`,
+      `chrome-extension://${currentUrl}`
+    ];
+    
+    let opened = false;
+    
+    for (const protocol of protocols) {
+      try {
+        const win = window.open(protocol);
+        if (win !== null) {
+          opened = true;
+          onClose();
+          break;
+        }
+      } catch (e) {
+        console.log(`Failed with protocol: ${protocol}`);
+      }
+    }
+    
+    if (!opened) {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
+      // If all protocols fail, try to open Chrome download page
+      window.open('https://www.google.com/chrome', '_blank');
     }
   };
   return (
