@@ -1,10 +1,11 @@
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useInView } from 'react-intersection-observer'
 import './LandingPage.css'
 import { FaGithub, FaLinkedin, FaTwitter } from 'react-icons/fa'
 import { GiArrowWings } from "react-icons/gi";
+import BrowserWarningModal from './BrowserWarningModal'
 
 function Typewriter({ roles, typingSpeed = 150, pauseTime = 1000 }) {
   const [index, setIndex] = useState(0);
@@ -51,6 +52,54 @@ function LandingPage() {
   const navigate = useNavigate()
   const containerRef = useRef(null)
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [showBrowserWarning, setShowBrowserWarning] = useState(false)
+const isGoogleChrome = useCallback(() => {
+  // Check if running in a browser environment
+  if (typeof window === 'undefined') return false;
+
+  // Get user agent and vendor
+  const userAgent = navigator.userAgent.toLowerCase();
+  const vendor = navigator.vendor || '';
+
+  // Debug logs
+  console.log('User Agent:', userAgent);
+  console.log('Vendor:', vendor);
+  console.log('Chrome Object:', typeof window.chrome);
+
+  // Check for Brave browser specifically
+  const isBrave = navigator.brave !== undefined;
+  
+  // First check if it's Chrome and not another browser
+  const hasChrome = /chrome/.test(userAgent);
+  const hasOtherBrowser = /edg|edge|opr|opera|brave|vivaldi|seamonkey|firefox/.test(userAgent);
+  
+  // Chrome's user agent contains 'safari', so we don't check for it
+  const isChrome = hasChrome && !hasOtherBrowser;
+
+  // Additional checks for Google Chrome specifically
+  const isGoogleBrowser = (
+    // Chrome reports Google Inc. as vendor
+    vendor === 'Google Inc.' &&
+    // Ensure Chrome object exists
+    typeof window.chrome !== 'undefined' &&
+    // Make sure it's not Brave
+    !isBrave
+  );
+
+  const result = isChrome && isGoogleBrowser;
+  console.log('Is Brave:', isBrave);
+  console.log('Is Google Chrome:', result);
+  return result;
+    return isChrome && isGoogleBrowser;
+  }, []);
+
+  const handleGetStarted = () => {
+    if (!isGoogleChrome()) {
+      setShowBrowserWarning(true)
+    } else {
+      navigate('/app')
+    }
+  }
   
   const sections = [
     { id: 'hero', label: 'Home' },
@@ -392,7 +441,7 @@ function LandingPage() {
               className="cta-button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/app')}
+              onClick={handleGetStarted}
             >
               Get Started
             </motion.button>
@@ -416,6 +465,13 @@ function LandingPage() {
           </a>
         </div>
       </div>
+      <BrowserWarningModal
+        isOpen={showBrowserWarning}
+        onClose={() => {
+          setShowBrowserWarning(false)
+          navigate('/app')
+        }}
+      />
     </div>
   )
 }
