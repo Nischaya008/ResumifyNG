@@ -7,19 +7,28 @@ function BrowserWarningModal({ isOpen, onClose }) {
   const [showToast, setShowToast] = useState(false);
 
   const handleOpenChrome = () => {
+    // Create a custom URL with x-browser scheme
+    const currentUrl = window.location.href;
+    const chromeUrl = `x-browser://chrome/${encodeURIComponent(currentUrl)}`;
+    
     try {
-      // Try to open the current URL in Chrome
-      const currentUrl = window.location.href;
-      // Use the google-chrome protocol for Windows
-      window.location.href = `googlechrome:${currentUrl}`;
+      // Create a hidden link and click it
+      const link = document.createElement('a');
+      link.href = chromeUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      // Close the modal after a short delay to allow the protocol handler to work
+      // Close the modal after a short delay
       setTimeout(() => {
         onClose();
       }, 500);
     } catch (error) {
+      console.error('Failed to open Chrome:', error);
+      // Show download link instead
+      window.open('https://www.google.com/chrome', '_blank');
       setShowToast(true);
-      // Auto-hide toast after 3 seconds
       setTimeout(() => setShowToast(false), 3000);
     }
   };
