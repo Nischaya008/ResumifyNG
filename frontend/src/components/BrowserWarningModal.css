@@ -1,0 +1,125 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.modal-header h2 {
+  font-size: 1.8rem;
+  background: linear-gradient(to right, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.modal-body {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.modal-body p {
+  color: var(--secondary);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.continue-button,
+.open-chrome-button {
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.continue-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.continue-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.open-chrome-button {
+  background: linear-gradient(45deg, var(--accent), var(--secondary));
+  color: var(--background);
+  box-shadow: 0 4px 15px rgba(216, 195, 165, 0.3);
+}
+
+.open-chrome-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(216, 195, 165, 0.4);
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 1.5rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .modal-body p {
+    font-size: 1rem;
+  }
+
+  .continue-button,
+  .open-chrome-button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Toast positioning within modal */
+.modal-content {
+  position: relative;
+}
+
+.modal-content .Toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  white-space: nowrap;
+  min-width: 300px;
+  text-align: center;
+}
