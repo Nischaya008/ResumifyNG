@@ -6,39 +6,7 @@ import './BrowserWarningModal.css';
 function BrowserWarningModal({ isOpen, onClose }) {
   const [showToast, setShowToast] = useState(false);
 
-  const handleOpenChrome = () => {
-    const currentUrl = window.location.href;
-    
-    // Try multiple protocols that might work
-    const protocols = [
-      `microsoft-edge-http://${currentUrl}`, // This actually triggers Chrome on Windows if it's default
-      `microsoft-edge:${currentUrl}`,
-      `chrome://${currentUrl}`,
-      `chrome-extension://${currentUrl}`
-    ];
-    
-    let opened = false;
-    
-    for (const protocol of protocols) {
-      try {
-        const win = window.open(protocol);
-        if (win !== null) {
-          opened = true;
-          onClose();
-          break;
-        }
-      } catch (e) {
-        console.log(`Failed with protocol: ${protocol}`);
-      }
-    }
-    
-    if (!opened) {
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
-      // If all protocols fail, try to open Chrome download page
-      window.open('https://www.google.com/chrome', '_blank');
-    }
-  };
+  // No additional handlers needed
   return (
     <AnimatePresence>
       {isOpen && (
@@ -59,8 +27,8 @@ function BrowserWarningModal({ isOpen, onClose }) {
               <h2>Browser Compatibility Notice</h2>
             </div>
             <div className="modal-body">
-              <p>For the best experience with ResumifyNG, we recommend using Google Chrome.</p>
-              <p>Some features may not work correctly in other browsers.</p>
+              <p>For optimal performance and compatibility, please use Google Chrome.</p>
+              <p>Some features may be limited or unavailable in other browsers.</p>
             </div>
             <div className="modal-footer">
               <motion.button
@@ -70,14 +38,6 @@ function BrowserWarningModal({ isOpen, onClose }) {
                 whileTap={{ scale: 0.95 }}
               >
                 Continue Anyway
-              </motion.button>
-              <motion.button
-                className="open-chrome-button"
-                onClick={handleOpenChrome}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Open in Chrome
               </motion.button>
             </div>
             {showToast && (
