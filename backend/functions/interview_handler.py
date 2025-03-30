@@ -133,32 +133,36 @@ def get_cache_path(text: str) -> pathlib.Path:
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=4, max=60),
-    retry=lambda e: isinstance(e, (gTTSError, HTTPError)) and (
-        "429" in str(e) or  # Rate limit error
-        "Too Many Requests" in str(e)
-    ),
-    before_sleep=lambda retry_state: logger.warning(
-        f"Rate limit hit, retrying in {retry_state.next_action.sleep} seconds..."
-    )
-)
 def generate_speech(text: str, cache_path: pathlib.Path):
     """Generate speech audio file using gTTS and adjust speed with pydub if available"""
     def get_temp_path():
         """Generate a unique temporary file path"""
         return cache_path.parent / f"temp_{uuid.uuid4().hex}.mp3"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=2, min=10, max=120),
+        retry=lambda e: isinstance(e, (gTTSError, HTTPError)) and (
+            "429" in str(e) or  # Rate limit error
+            "Too Many Requests" in str(e)
+        ),
+        before_sleep=lambda retry_state: logger.warning(
+            f"Rate limit hit, retrying in {retry_state.next_action.sleep} seconds..."
+        )
+    )
+    def generate_tts(text: str, output_path: str):
+        """Internal function to generate TTS with retries"""
+        # Add delay between requests to avoid rate limits
+        time.sleep(2)
+        tts = gTTS(text=text, lang='en', slow=False)
+        tts.save(output_path)
+        return tts
     
     temp_path = get_temp_path()
     
     try:
-        # Add delay between requests to avoid rate limits
-        time.sleep(1)
-        
-        # Generate initial speech with gTTS
-        tts = gTTS(text=text, lang='en', slow=False)
-        tts.save(str(temp_path))
+        # Generate initial speech with retries
+        tts = generate_tts(text, str(temp_path))
         logger.debug(f"Generated initial speech file at {temp_path}")
         
         try:
@@ -177,11 +181,18 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             # If pydub fails, copy the original file
             shutil.copy2(str(temp_path), str(cache_path))
             
+    except (gTTSError, HTTPError) as e:
+        logger.error(f"Speech generation failed after retries: {e}")
+        # Notify frontend about persistent TTS issues
+        pusher.trigger('interview-channel', 'tts-error', {
+            'type': 'tts_error',
+            'error': 'Speech generation is temporarily unavailable. Text responses will continue.'
+        })
+        # Don't retry - let the interview continue without audio
+        raise
     except Exception as e:
-        logger.error(f"Speech generation failed: {e}")
-        # Final fallback: direct save
-        tts.save(str(cache_path))
-        
+        logger.error(f"Unexpected error in speech generation: {e}", exc_info=True)
+        raise
     finally:
         # Ensure all handles are released before cleanup
         time.sleep(0.5)
