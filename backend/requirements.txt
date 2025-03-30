@@ -30,6 +30,7 @@ textblob==0.15.3
 # AI and Communication
 langchain>=0.1.0
 langchain_community>=0.0.10
+langchain-together>=0.0.1
 together==0.1.9
 pusher==3.3.0
 websockets==11.0.0
