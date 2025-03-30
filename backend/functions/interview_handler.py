@@ -130,6 +130,17 @@ def get_cache_path(text: str) -> pathlib.Path:
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=4, max=60),
+    retry=lambda e: isinstance(e, (gTTSError, HTTPError)) and (
+        "429" in str(e) or  # Rate limit error
+        "Too Many Requests" in str(e)
+    ),
+    before_sleep=lambda retry_state: logger.warning(
+        f"Rate limit hit, retrying in {retry_state.next_action.sleep} seconds..."
+    )
+)
 def generate_speech(text: str, cache_path: pathlib.Path):
     """Generate speech audio file using gTTS and adjust speed with pydub if available"""
     def get_temp_path():
@@ -139,6 +150,9 @@ def generate_speech(text: str, cache_path: pathlib.Path):
     temp_path = get_temp_path()
     
     try:
+        # Add delay between requests to avoid rate limits
+        time.sleep(1)
+        
         # Generate initial speech with gTTS
         tts = gTTS(text=text, lang='en', slow=False)
         tts.save(str(temp_path))
@@ -185,11 +199,24 @@ def speak_text(text, force=False):
             
             # Generate audio file if not in cache
             if not cache_path.exists():
-                generate_speech(text, cache_path)
-                logger.debug(f"Generated audio file at {cache_path}")
+                try:
+                    generate_speech(text, cache_path)
+                    logger.debug(f"Generated audio file at {cache_path}")
+                except (gTTSError, HTTPError) as e:
+                    if "429" in str(e) or "Too Many Requests" in str(e):
+                        logger.error(f"Rate limit exceeded after retries: {e}")
+                        # Notify frontend about TTS failure
+                        pusher.trigger('interview-channel', 'tts-error', {
+                            'type': 'tts_error',
+                            'error': 'Speech generation temporarily unavailable. Please try again later.'
+                        })
+                    else:
+                        logger.error(f"Speech generation failed: {e}")
+                except Exception as e:
+                    logger.error(f"Unexpected error in speech generation: {e}", exc_info=True)
             
         except Exception as e:
-            logger.error(f"Speech generation error: {e}")
+            logger.error(f"Speech generation error: {e}", exc_info=True)
 
 class MuteRequest(BaseModel):
     mute: bool
