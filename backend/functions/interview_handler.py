@@ -100,18 +100,26 @@ except Exception as e:
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("/tmp/tts_cache")  # Use /tmp for deployment
 try:
+    # Ensure directory exists with proper permissions
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    os.chmod(str(CACHE_DIR), 0o777)  # Full permissions for troubleshooting
+    
     # Test write permissions
     test_file = CACHE_DIR / "test.txt"
     test_file.write_text("test")
     test_file.unlink()
     logger.info(f"Cache directory initialized at {CACHE_DIR}")
 except Exception as e:
-    logger.error(f"Failed to initialize cache directory: {e}")
-    # Fallback to current directory
-    CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Using fallback cache directory: {CACHE_DIR}")
+    logger.error(f"Failed to initialize primary cache directory: {e}", exc_info=True)
+    try:
+        # Fallback to current directory
+        CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        os.chmod(str(CACHE_DIR), 0o777)  # Full permissions for fallback
+        logger.info(f"Using fallback cache directory: {CACHE_DIR}")
+    except Exception as e2:
+        logger.error(f"Failed to initialize fallback cache directory: {e2}", exc_info=True)
+        raise RuntimeError("Failed to initialize any cache directory")
 
 # Global mute state
 is_muted = False
@@ -314,7 +322,8 @@ async def start_interview(request: InterviewRequest):
                 detail="Missing required fields: resume_data or job_description"
             )
 
-        # Clear any existing conversation
+        # Reset interview state and clear conversation
+        reset_interview_state(request.resume_data)
         if hasattr(memory, 'chat_memory'):
             memory.chat_memory.clear()
         
@@ -380,8 +389,11 @@ async def start_interview(request: InterviewRequest):
         return {"status": "success", "message": "Interview started"}
         
     except Exception as e:
-        logger.error(f"Error starting interview: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        error_msg = f"Error starting interview: {str(e)}"
+        logger.error(error_msg, exc_info=True)  # Log full traceback
+        if hasattr(e, 'detail'):
+            raise HTTPException(status_code=500, detail=str(e.detail))
+        raise HTTPException(status_code=500, detail=error_msg)
 
 @router.post("/send_message")
 async def send_message(request: MessageRequest):
