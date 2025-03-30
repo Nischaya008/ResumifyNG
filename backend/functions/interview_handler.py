@@ -100,26 +100,18 @@ except Exception as e:
 # Create cache directory if it doesn't exist
 CACHE_DIR = pathlib.Path("/tmp/tts_cache")  # Use /tmp for deployment
 try:
-    # Ensure directory exists with proper permissions
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    os.chmod(str(CACHE_DIR), 0o777)  # Full permissions for troubleshooting
-    
     # Test write permissions
     test_file = CACHE_DIR / "test.txt"
     test_file.write_text("test")
     test_file.unlink()
     logger.info(f"Cache directory initialized at {CACHE_DIR}")
 except Exception as e:
-    logger.error(f"Failed to initialize primary cache directory: {e}", exc_info=True)
-    try:
-        # Fallback to current directory
-        CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
-        CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        os.chmod(str(CACHE_DIR), 0o777)  # Full permissions for fallback
-        logger.info(f"Using fallback cache directory: {CACHE_DIR}")
-    except Exception as e2:
-        logger.error(f"Failed to initialize fallback cache directory: {e2}", exc_info=True)
-        raise RuntimeError("Failed to initialize any cache directory")
+    logger.error(f"Failed to initialize cache directory: {e}")
+    # Fallback to current directory
+    CACHE_DIR = pathlib.Path("backend/temp/tts_cache")
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using fallback cache directory: {CACHE_DIR}")
 
 # Global mute state
 is_muted = False
@@ -218,13 +210,11 @@ together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
 
-# Initialize Together LLM with stable parameters
 llm = Together(
     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-    temperature=0.5,  # Reduced for more stable outputs
-    max_tokens=256,   # Further reduced for stability
-    top_p=0.9,       # Increased for better coherence
-    top_k=50,        # Added for more focused sampling
+    temperature=0.7,
+    max_tokens=512,  # Reduced to keep responses more concise
+    top_p=0.7,
     together_api_key=together_api_key
 )
 
@@ -392,33 +382,26 @@ async def start_interview(request: InterviewRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-            try:
-                # Generate speech first
-                cache_path = get_cache_path(cleaned_response)
-                if not cache_path.exists():
-                    generate_speech(cleaned_response, cache_path)
-                
-                # Get audio file hash for URL
-                audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-                
-                # Once speech is ready, send the actual message with audio URL
-                pusher.trigger('interview-channel', 'ai-response', {
-                    'type': 'ai_response',
-                    'message': cleaned_response,
-                    'message_id': message_id,
-                    'speech_ready': True,
-                    'audio_url': f"/api/audio/{audio_hash}"
-                })
-            except Exception as e:
-                logger.error(f"Speech generation failed, sending response without audio: {e}")
-                # Send response without audio on error
-                pusher.trigger('interview-channel', 'ai-response', {
-                    'type': 'ai_response',
-                    'message': cleaned_response,
-                    'message_id': message_id,
-                    'speech_ready': False,
-                    'audio_url': None
-                })
+                    # Generate speech first
+                    cache_path = get_cache_path(cleaned_response)
+                    if not cache_path.exists():
+                        generate_speech(cleaned_response, cache_path)
+                    
+                    # Get audio file hash for URL
+                    audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+                    
+                    # Once speech is ready, send the actual message with audio URL
+                    pusher.trigger('interview-channel', 'ai-response', {
+                        'type': 'ai_response',
+                        'message': cleaned_response,
+                        'message_id': message_id,
+                        'speech_ready': audio_enabled,
+                        'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
+                    })
+                    
+                    # Then generate speech if audio is enabled
+                    if audio_enabled:
+                        speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
@@ -511,33 +494,26 @@ async def send_message(request: MessageRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-            try:
-                # Generate speech first
-                cache_path = get_cache_path(cleaned_response)
-                if not cache_path.exists():
-                    generate_speech(cleaned_response, cache_path)
-                
-                # Get audio file hash for URL
-                audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-                
-                # Once speech is ready, send the actual message with audio URL
-                pusher.trigger('interview-channel', 'ai-response', {
-                    'type': 'ai_response',
-                    'message': cleaned_response,
-                    'message_id': message_id,
-                    'speech_ready': True,
-                    'audio_url': f"/api/audio/{audio_hash}"
-                })
-            except Exception as e:
-                logger.error(f"Speech generation failed, sending response without audio: {e}")
-                # Send response without audio on error
-                pusher.trigger('interview-channel', 'ai-response', {
-                    'type': 'ai_response',
-                    'message': cleaned_response,
-                    'message_id': message_id,
-                    'speech_ready': False,
-                    'audio_url': None
-                })
+                    # Generate speech first
+                    cache_path = get_cache_path(cleaned_response)
+                    if not cache_path.exists():
+                        generate_speech(cleaned_response, cache_path)
+                    
+                    # Get audio file hash for URL
+                    audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+                    
+                    # Once speech is ready, send the actual message with audio URL
+                    pusher.trigger('interview-channel', 'ai-response', {
+                        'type': 'ai_response',
+                        'message': cleaned_response,
+                        'message_id': message_id,
+                        'speech_ready': audio_enabled,
+                        'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
+                    })
+                    
+                    # Then generate speech if audio is enabled
+                    if audio_enabled:
+                        speak_text(cleaned_response)
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
