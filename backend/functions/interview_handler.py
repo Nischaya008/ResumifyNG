@@ -218,20 +218,18 @@ together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
 
-# Initialize Together LLM with retries built into configuration
+# Initialize Together LLM with stable parameters
 llm = Together(
     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
     temperature=0.5,  # Reduced for more stable outputs
     max_tokens=256,   # Further reduced for stability
     top_p=0.9,       # Increased for better coherence
     top_k=50,        # Added for more focused sampling
-    together_api_key=together_api_key,
-    max_retries=3,   # Built-in retries
-    request_timeout=30,  # Increased timeout
+    together_api_key=together_api_key
 )
 
-# Configure logging for Together API
-logging.getLogger("langchain_together").setLevel(logging.DEBUG)
+# Enable detailed logging
+logging.getLogger("langchain").setLevel(logging.DEBUG)
 
 # Initialize Pusher
 pusher = Pusher(
@@ -346,25 +344,31 @@ async def start_interview(request: InterviewRequest):
         Keep your response under 150 words.
         Do not generate multiple responses or follow-up questions."""
         
-        # Get initial response with better error handling
-        try:
-            initial_response = await llm_chain.apredict(input=input_text)
-            if not initial_response:
-                raise ValueError("Empty response received from LLM")
-            cleaned_response = initial_response.split('"""')[0].strip()
-            if not cleaned_response:
-                raise ValueError("Empty response after cleaning")
-            logger.info("Successfully generated initial response")
-        except Exception as e:
-            logger.error(f"LLM generation error: {str(e)}", exc_info=True)
-            if "rate limit" in str(e).lower():
-                raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
-            elif "token limit" in str(e).lower():
-                raise HTTPException(status_code=400, detail="Input too long. Please provide a shorter resume or job description.")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to generate interview response: {str(e)}"
-            )
+        # Add retry logic for LLM chain
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=4, max=10)
+        )
+        async def predict_with_retries(chain, text):
+            try:
+                response = await chain.apredict(input=text)
+                if not response:
+                    raise ValueError("Empty response received from LLM")
+                return response
+            except Exception as e:
+                logger.error(f"LLM generation error: {str(e)}", exc_info=True)
+                if "rate limit" in str(e).lower():
+                    raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+                elif "token limit" in str(e).lower():
+                    raise HTTPException(status_code=400, detail="Input too long. Please provide a shorter resume or job description.")
+                raise
+
+        # Get initial response with retries
+        initial_response = await predict_with_retries(llm_chain, input_text)
+        cleaned_response = initial_response.split('"""')[0].strip()
+        if not cleaned_response:
+            raise ValueError("Empty response after cleaning")
+        logger.info("Successfully generated initial response")
         
         # Generate unique message ID
         message_id = str(uuid.uuid4())
@@ -479,8 +483,11 @@ async def send_message(request: MessageRequest):
                 Resume Data: {json.dumps(request.resume_data)}
                 Job Description: {request.job_description}"""
             
-            response = await llm_chain.apredict(input=input_text)
+            response = await predict_with_retries(llm_chain, input_text)
             cleaned_response = response.split('"""')[0].strip()
+            if not cleaned_response:
+                raise ValueError("Empty response after cleaning")
+            logger.info("Successfully generated response")
         
         # Store the interaction in memory
         memory.chat_memory.add_message({"role": "user", "content": request.message})
