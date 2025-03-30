@@ -210,18 +210,40 @@ async def toggle_mute(request: MuteRequest):
 
 load_dotenv()
 
-# Initialize Together.ai client
+# Initialize Together.ai client with retries
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
 
+# Wrap Together API calls with retry logic
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    reraise=True
+)
+async def generate_with_retries(*args, **kwargs):
+    try:
+        return await llm._acall(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"Together API error: {str(e)}", exc_info=True)
+        if "rate limit" in str(e).lower():
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+        raise
+
+# Initialize Together LLM with more conservative parameters
 llm = Together(
     model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-    temperature=0.7,
-    max_tokens=512,  # Reduced to keep responses more concise
-    top_p=0.7,
+    temperature=0.5,  # Reduced for more stable outputs
+    max_tokens=256,   # Further reduced for stability
+    top_p=0.9,       # Increased for better coherence
+    top_k=50,        # Added for more focused sampling
     together_api_key=together_api_key
 )
+
+# Monkey patch the _acall method with our retry wrapper
+llm._acall = generate_with_retries
 
 # Initialize Pusher
 pusher = Pusher(
@@ -336,9 +358,25 @@ async def start_interview(request: InterviewRequest):
         Keep your response under 150 words.
         Do not generate multiple responses or follow-up questions."""
         
-        # Get initial response
-        initial_response = await llm_chain.apredict(input=input_text)
-        cleaned_response = initial_response.split('"""')[0].strip()
+        # Get initial response with better error handling
+        try:
+            initial_response = await llm_chain.apredict(input=input_text)
+            if not initial_response:
+                raise ValueError("Empty response received from LLM")
+            cleaned_response = initial_response.split('"""')[0].strip()
+            if not cleaned_response:
+                raise ValueError("Empty response after cleaning")
+            logger.info("Successfully generated initial response")
+        except Exception as e:
+            logger.error(f"LLM generation error: {str(e)}", exc_info=True)
+            if "rate limit" in str(e).lower():
+                raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+            elif "token limit" in str(e).lower():
+                raise HTTPException(status_code=400, detail="Input too long. Please provide a shorter resume or job description.")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to generate interview response: {str(e)}"
+            )
         
         # Generate unique message ID
         message_id = str(uuid.uuid4())
