@@ -33,6 +33,7 @@ langchain_community>=0.0.10
 together==0.1.9
 pusher==3.3.0
 websockets==11.0.0
+tenacity>=8.0.0  # For retry functionality
 
 # Audio processing
 gTTS==2.3.2
