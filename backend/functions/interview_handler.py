@@ -392,26 +392,33 @@ async def start_interview(request: InterviewRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-            # Generate speech first
-            cache_path = get_cache_path(cleaned_response)
-            if not cache_path.exists():
-                generate_speech(cleaned_response, cache_path)
-            
-            # Get audio file hash for URL
-            audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-            
-            # Once speech is ready, send the actual message with audio URL
-            pusher.trigger('interview-channel', 'ai-response', {
-                'type': 'ai_response',
-                'message': cleaned_response,
-                'message_id': message_id,
-                'speech_ready': audio_enabled,
-                'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
-            })
-            
-            # Then generate speech if audio is enabled
-            if audio_enabled:
-                speak_text(cleaned_response)
+            try:
+                # Generate speech first
+                cache_path = get_cache_path(cleaned_response)
+                if not cache_path.exists():
+                    generate_speech(cleaned_response, cache_path)
+                
+                # Get audio file hash for URL
+                audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+                
+                # Once speech is ready, send the actual message with audio URL
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': True,
+                    'audio_url': f"/api/audio/{audio_hash}"
+                })
+            except Exception as e:
+                logger.error(f"Speech generation failed, sending response without audio: {e}")
+                # Send response without audio on error
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': False,
+                    'audio_url': None
+                })
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
@@ -504,26 +511,33 @@ async def send_message(request: MessageRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-            # Generate speech first
-            cache_path = get_cache_path(cleaned_response)
-            if not cache_path.exists():
-                generate_speech(cleaned_response, cache_path)
-            
-            # Get audio file hash for URL
-            audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-            
-            # Once speech is ready, send the actual message with audio URL
-            pusher.trigger('interview-channel', 'ai-response', {
-                'type': 'ai_response',
-                'message': cleaned_response,
-                'message_id': message_id,
-                'speech_ready': audio_enabled,
-                'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
-            })
-            
-            # Then generate speech if audio is enabled
-            if audio_enabled:
-                speak_text(cleaned_response)
+            try:
+                # Generate speech first
+                cache_path = get_cache_path(cleaned_response)
+                if not cache_path.exists():
+                    generate_speech(cleaned_response, cache_path)
+                
+                # Get audio file hash for URL
+                audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
+                
+                # Once speech is ready, send the actual message with audio URL
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': True,
+                    'audio_url': f"/api/audio/{audio_hash}"
+                })
+            except Exception as e:
+                logger.error(f"Speech generation failed, sending response without audio: {e}")
+                # Send response without audio on error
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': False,
+                    'audio_url': None
+                })
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
