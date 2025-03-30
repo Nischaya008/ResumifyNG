@@ -46,6 +46,7 @@ import time
 import platform
 from pydub import AudioSegment
 from pydub.utils import which
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 def get_ffmpeg_path():
     """Get ffmpeg binary path based on platform and environment"""
