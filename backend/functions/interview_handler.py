@@ -202,18 +202,35 @@ async def toggle_mute(request: MuteRequest):
 
 load_dotenv()
 
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 # Initialize Together.ai client
 together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
 
-llm = Together(
-    model="mistralai/Mixtral-8x7B-Instruct-v0.1",
-    temperature=0.7,
-    max_tokens=512,  # Reduced to keep responses more concise
-    top_p=0.7,
-    together_api_key=together_api_key
+# Add retry decorator for Together API calls
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    reraise=True
 )
+def create_llm():
+    return Together(
+        model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+        temperature=0.7,
+        max_tokens=512,  # Reduced to keep responses more concise
+        top_p=0.7,
+        together_api_key=together_api_key
+    )
+
+try:
+    llm = create_llm()
+    logger.info("Successfully initialized Together LLM")
+except Exception as e:
+    logger.error(f"Failed to initialize Together LLM after retries: {e}")
+    raise
 
 # Initialize Pusher
 pusher = Pusher(
@@ -314,9 +331,11 @@ async def start_interview(request: InterviewRequest):
                 detail="Missing required fields: resume_data or job_description"
             )
 
-        # Clear any existing conversation
+        # Reset interview state and clear conversation
+        reset_interview_state(request.resume_data)
         if hasattr(memory, 'chat_memory'):
             memory.chat_memory.clear()
+        logger.info("Reset interview state and cleared conversation memory")
         
         # Format the input for initial interview start
         input_text = f"""You are conducting a technical interview. Based on the candidate's profile:
@@ -327,9 +346,45 @@ async def start_interview(request: InterviewRequest):
         Keep your response under 150 words.
         Do not generate multiple responses or follow-up questions."""
         
-        # Get initial response
-        initial_response = await llm_chain.apredict(input=input_text)
-        cleaned_response = initial_response.split('"""')[0].strip()
+        # Add retry logic for LLM prediction
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=4, max=10),
+            reraise=True
+        )
+        async def get_llm_response(input_text):
+            try:
+                response = await llm_chain.apredict(input=input_text)
+                return response.split('"""')[0].strip()
+            except Exception as e:
+                logger.error(f"LLM prediction failed: {e}")
+                raise
+
+        try:
+            cleaned_response = await get_llm_response(input_text)
+            logger.info("Successfully got LLM response")
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Failed to get LLM response after retries: {error_msg}")
+            
+            # Check for specific error types
+            if "503" in error_msg:
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service temporarily unavailable. Please try again in a few moments."
+                )
+            elif "401" in error_msg or "403" in error_msg:
+                raise HTTPException(
+                    status_code=500,
+                    detail="API authentication error. Please check API key configuration."
+                )
+            else:
+                # Log the full error details for debugging
+                logger.error(f"Unexpected error details: {repr(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Error processing request: {error_msg}"
+                )
         
         # Generate unique message ID
         message_id = str(uuid.uuid4())
@@ -386,6 +441,17 @@ async def start_interview(request: InterviewRequest):
 @router.post("/send_message")
 async def send_message(request: MessageRequest):
     try:
+        logger.debug(f"Processing message request with message length: {len(request.message)}")
+        logger.debug("Resume data and job description provided: %s",
+                    bool(request.resume_data) and bool(request.job_description))
+        
+        # Validate required fields
+        if not request.message or not request.resume_data or not request.job_description:
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required fields: message, resume_data, or job_description"
+            )
+        
         # Ensure we're unmuted for the response
         global is_muted
         is_muted = False
@@ -441,8 +507,46 @@ async def send_message(request: MessageRequest):
                 Resume Data: {json.dumps(request.resume_data)}
                 Job Description: {request.job_description}"""
             
-            response = await llm_chain.apredict(input=input_text)
-            cleaned_response = response.split('"""')[0].strip()
+            # Add retry logic for LLM prediction
+            @retry(
+                stop=stop_after_attempt(3),
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                reraise=True
+            )
+            async def get_llm_response(input_text):
+                try:
+                    response = await llm_chain.apredict(input=input_text)
+                    return response.split('"""')[0].strip()
+                except Exception as e:
+                    logger.error(f"LLM prediction failed: {e}")
+                    raise
+
+            try:
+                logger.debug(f"Attempting LLM response with input length: {len(input_text)}")
+                cleaned_response = await get_llm_response(input_text)
+                logger.info("Successfully got LLM response")
+            except Exception as e:
+                error_msg = str(e)
+                logger.error(f"Failed to get LLM response after retries: {error_msg}")
+                
+                # Check for specific error types
+                if "503" in error_msg:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="AI service temporarily unavailable. Please try again in a few moments."
+                    )
+                elif "401" in error_msg or "403" in error_msg:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="API authentication error. Please check API key configuration."
+                    )
+                else:
+                    # Log the full error details for debugging
+                    logger.error(f"Unexpected error details: {repr(e)}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"Error processing request: {error_msg}"
+                    )
         
         # Store the interaction in memory
         memory.chat_memory.add_message({"role": "user", "content": request.message})
