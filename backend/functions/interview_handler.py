@@ -29,6 +29,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
 from langchain_community.llms.together import Together
+from langchain_together import Together
 import os
 from pusher import Pusher
 import logging
@@ -37,7 +38,7 @@ from pydantic import BaseModel
 from textblob import TextBlob
 import uuid
 import threading
-from gtts import gTTS
+from gtts import gTTS, gTTSError
 import pygame
 import hashlib
 import pathlib
@@ -46,6 +47,8 @@ import time
 import platform
 from pydub import AudioSegment
 from pydub.utils import which
+from requests.exceptions import HTTPError
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 def get_ffmpeg_path():
     """Get ffmpeg binary path based on platform and environment"""
@@ -238,9 +241,6 @@ async def toggle_mute(request: MuteRequest):
 load_dotenv()
 
 # Initialize Together.ai client
-from langchain_together import Together
-from tenacity import retry, stop_after_attempt, wait_exponential
-
 together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
