@@ -20,16 +20,17 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
+@app.head("/health")
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Railway deployment"""
+    """Health check endpoint for Railway deployment and UptimeRobot monitoring"""
     required_env_vars = ["TOGETHER_API_KEY", "PUSHER_APP_ID", "PUSHER_KEY", "PUSHER_SECRET", "PUSHER_CLUSTER"]
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
     
-    if missing_vars:
-        return {"status": "unhealthy", "message": f"Missing environment variables: {', '.join(missing_vars)}"}
+    response = {"status": "healthy"} if not missing_vars else {"status": "unhealthy", "message": f"Missing environment variables: {', '.join(missing_vars)}"}
     
-    return {"status": "healthy"}
+    # Return same response for both HEAD and GET
+    return response
 
 # Include all routers
 app.include_router(resume_parser_router, prefix="/api")
