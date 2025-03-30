@@ -46,7 +46,6 @@ import time
 import platform
 from pydub import AudioSegment
 from pydub.utils import which
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 def get_ffmpeg_path():
     """Get ffmpeg binary path based on platform and environment"""
@@ -131,62 +130,44 @@ def get_cache_path(text: str) -> pathlib.Path:
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=4, max=10),
-    reraise=True
-)
-def generate_tts(text: str, output_path: str):
-    """Generate TTS with retries and rate limit handling"""
-    try:
-        tts = gTTS(text=text, lang='en', slow=False)
-        tts.save(output_path)
-        return True
-    except Exception as e:
-        if "429" in str(e):  # Rate limit error
-            logger.warning("TTS rate limit hit, retrying after exponential backoff...")
-            raise  # Let retry handle it
-        logger.error(f"TTS generation error: {e}")
-        raise
-
 def generate_speech(text: str, cache_path: pathlib.Path):
-    """Generate speech audio file using gTTS with retries and speed adjustment"""
+    """Generate speech audio file using gTTS and adjust speed with pydub if available"""
     def get_temp_path():
+        """Generate a unique temporary file path"""
         return cache_path.parent / f"temp_{uuid.uuid4().hex}.mp3"
     
     temp_path = get_temp_path()
     
     try:
-        # Generate TTS with retries
-        generate_tts(text, str(temp_path))
+        # Generate initial speech with gTTS
+        tts = gTTS(text=text, lang='en', slow=False)
+        tts.save(str(temp_path))
         logger.debug(f"Generated initial speech file at {temp_path}")
         
-        if FFMPEG_PATH:  # Only attempt speed adjustment if ffmpeg is available
-            try:
-                # Load and process audio
-                with open(str(temp_path), 'rb') as audio_file:
-                    audio = AudioSegment.from_file(audio_file, format="mp3")
-                    # Speed up by 1.2x for faster speech
-                    faster_audio = audio.speedup(playback_speed=1.2)
-                    # Export to cache path
-                    faster_audio.export(str(cache_path), format="mp3")
-                logger.info("Successfully processed audio with speed adjustment")
-                return
+        try:
+            # Load and process audio
+            with open(str(temp_path), 'rb') as audio_file:
+                audio = AudioSegment.from_file(audio_file, format="mp3")
+                # Speed up by 1.2x for faster speech
+                faster_audio = audio.speedup(playback_speed=1.2)
+                # Export to cache path
+                faster_audio.export(str(cache_path), format="mp3")
                 
-            except Exception as e:
-                logger.error(f"Speed adjustment failed: {e}")
-                # Fall through to copy original file
-        
-        # If no ffmpeg or speed adjustment failed, copy original file
-        shutil.copy2(str(temp_path), str(cache_path))
-        logger.info("Using original speed audio file")
-        
+            logger.info("Successfully processed audio with pydub at 2x speed")
+            
+        except Exception as e:
+            logger.error(f"Pydub processing failed: {e}")
+            # If pydub fails, copy the original file
+            shutil.copy2(str(temp_path), str(cache_path))
+            
     except Exception as e:
-        logger.error(f"Speech generation failed after retries: {e}")
-        raise
+        logger.error(f"Speech generation failed: {e}")
+        # Final fallback: direct save
+        tts.save(str(cache_path))
         
     finally:
-        # Clean up temp file
+        # Ensure all handles are released before cleanup
+        time.sleep(0.5)
         try:
             if temp_path.exists():
                 temp_path.unlink()
@@ -194,7 +175,7 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             logger.error(f"Cleanup error: {e}")
 
 def speak_text(text, force=False):
-    """Generate speech audio file with caching and error handling"""
+    """Generate speech audio file (actual playback happens in browser)"""
     global is_muted
     
     # Only proceed if not muted or forced
@@ -202,29 +183,13 @@ def speak_text(text, force=False):
         try:
             cache_path = get_cache_path(text)
             
-            # Check cache first
-            if cache_path.exists():
-                logger.debug(f"Using cached audio file at {cache_path}")
-                return
-            
-            # Generate new audio file with retries
-            try:
+            # Generate audio file if not in cache
+            if not cache_path.exists():
                 generate_speech(text, cache_path)
-                logger.info(f"Successfully generated audio file at {cache_path}")
-            except Exception as e:
-                if "429" in str(e):  # Rate limit error
-                    logger.error("TTS rate limit exceeded even after retries")
-                    raise HTTPException(
-                        status_code=429,
-                        detail="Speech generation rate limit exceeded. Please try again later."
-                    )
-                logger.error(f"Speech generation failed: {e}")
-                raise
+                logger.debug(f"Generated audio file at {cache_path}")
             
         except Exception as e:
-            logger.error(f"Speech generation error: {e}", exc_info=True)
-            # Don't raise here - let the application continue without audio
-            # The frontend will handle missing audio gracefully
+            logger.error(f"Speech generation error: {e}")
 
 class MuteRequest(BaseModel):
     mute: bool
