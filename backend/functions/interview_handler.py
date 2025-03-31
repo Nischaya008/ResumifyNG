@@ -5,7 +5,6 @@ For development:
 - Windows: Download ffmpeg from https://ffmpeg.org/download.html
 - MacOS: Install via 'brew install ffmpeg'
 - Linux: Install via package manager (apt install ffmpeg, yum install ffmpeg, etc.)
-
 For deployment:
 1. Set FFMPEG_PATH environment variable to custom ffmpeg binary location, or
 2. Include ffmpeg binary in your deployment:
@@ -37,6 +36,7 @@ from pydantic import BaseModel
 from textblob import TextBlob
 import uuid
 import threading
+from gtts import gTTS
 import pygame
 import hashlib
 import pathlib
@@ -45,8 +45,6 @@ import time
 import platform
 from pydub import AudioSegment
 from pydub.utils import which
-from TTS.api import TTS
-import torch
 
 def get_ffmpeg_path():
     """Get ffmpeg binary path based on platform and environment"""
@@ -118,58 +116,64 @@ except Exception as e:
 is_muted = False
 current_speech_thread = None
 
+# Import retry utilities
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 def get_cache_path(text: str) -> pathlib.Path:
     """Generate a cache file path for the given text"""
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
-# Initialize TTS model once at module level
-try:
-    tts_model = TTS("tts_models/en/ljspeech/tacotron2-DDC")
-    tts_model.to("cpu")  # Use CPU for better compatibility
-    logger.info("Successfully initialized Coqui TTS model")
-except Exception as e:
-    logger.error(f"Failed to initialize Coqui TTS model: {e}")
-    tts_model = None
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
 def generate_speech(text: str, cache_path: pathlib.Path):
-    """Generate speech audio file using Coqui TTS and adjust speed with pydub if available"""
+    """Generate speech audio file using gTTS and adjust speed with pydub if available"""
     def get_temp_path():
         """Generate a unique temporary file path"""
-        return cache_path.parent / f"temp_{uuid.uuid4().hex}.wav"
+        return cache_path.parent / f"temp_{uuid.uuid4().hex}.mp3"
     
     temp_path = get_temp_path()
     
     try:
-        if tts_model is None:
-            raise Exception("TTS model not initialized")
-
-        # Generate initial speech with Coqui TTS
-        tts_model.tts_to_file(
-            text=text,
-            file_path=str(temp_path),
-            speaker=None,  # Use default speaker
-            language="en"
-        )
-        logger.debug(f"Generated initial speech file at {temp_path}")
+        # Generate initial speech with gTTS
+        tts = gTTS(text=text, lang='en', slow=False)
+        
+        # Retry TTS save with exponential backoff
+        try:
+            tts.save(str(temp_path))
+            logger.debug(f"Generated initial speech file at {temp_path}")
+        except Exception as e:
+            if "429" in str(e):
+                logger.warning("TTS rate limit hit, retrying with backoff...")
+                time.sleep(5)  # Initial backoff before retry
+                tts.save(str(temp_path))
+            else:
+                raise
         
         try:
             # Load and process audio
-            audio = AudioSegment.from_wav(temp_path)
-            # Speed up by 1.2x for faster speech
-            faster_audio = audio.speedup(playback_speed=1.2)
-            # Export to cache path as MP3 for browser compatibility
-            faster_audio.export(str(cache_path), format="mp3")
-            
+            with open(str(temp_path), 'rb') as audio_file:
+                audio = AudioSegment.from_file(audio_file, format="mp3")
+                # Speed up by 1.2x for faster speech
+                faster_audio = audio.speedup(playback_speed=1.2)
+                # Export to cache path
+                faster_audio.export(str(cache_path), format="mp3")
+                
             logger.info("Successfully processed audio with pydub at 1.2x speed")
             
         except Exception as e:
             logger.error(f"Pydub processing failed: {e}")
-            # If pydub fails, convert WAV to MP3 directly
-            audio = AudioSegment.from_wav(temp_path)
-            audio.export(str(cache_path), format="mp3")
+            # If pydub fails, copy the original file
+            shutil.copy2(str(temp_path), str(cache_path))
             
     except Exception as e:
         logger.error(f"Speech generation failed: {e}")
+        # Don't retry on final failure, just notify the client
+        pusher.trigger('interview-channel', 'speech-error', {
+            'error': 'Speech generation failed. Text-only mode enabled.'
+        })
         raise
         
     finally:
@@ -179,7 +183,6 @@ def generate_speech(text: str, cache_path: pathlib.Path):
             if temp_path.exists():
                 temp_path.unlink()
         except Exception as e:
-            logger.error(f"Cleanup error: {e}")
             logger.error(f"Cleanup error: {e}")
 
 def speak_text(text, force=False):
@@ -220,7 +223,6 @@ load_dotenv()
 
 # Initialize Together.ai client
 from langchain_together import Together
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Add retry logic for LLM chain at module level
 @retry(
@@ -405,26 +407,45 @@ async def start_interview(request: InterviewRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-                    # Generate speech first
-                    cache_path = get_cache_path(cleaned_response)
-                    if not cache_path.exists():
+            try:
+                # Generate speech first
+                cache_path = get_cache_path(cleaned_response)
+                speech_ready = False
+                audio_url = None
+                
+                if not cache_path.exists():
+                    try:
                         generate_speech(cleaned_response, cache_path)
-                    
-                    # Get audio file hash for URL
+                        speech_ready = True
+                    except Exception as e:
+                        logger.error(f"Speech generation failed: {e}")
+                        # Continue without audio
+                else:
+                    speech_ready = True
+                
+                if speech_ready:
                     audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-                    
-                    # Once speech is ready, send the actual message with audio URL
-                    pusher.trigger('interview-channel', 'ai-response', {
-                        'type': 'ai_response',
-                        'message': cleaned_response,
-                        'message_id': message_id,
-                        'speech_ready': audio_enabled,
-                        'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
-                    })
-                    
-                    # Then generate speech if audio is enabled
-                    if audio_enabled:
-                        speak_text(cleaned_response)
+                    audio_url = f"/api/audio/{audio_hash}"
+                
+                # Send message with audio status
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': speech_ready,
+                    'audio_url': audio_url
+                })
+                
+            except Exception as e:
+                logger.error(f"Error in speak_and_notify thread: {e}")
+                # Ensure message is sent even if speech fails
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': False,
+                    'audio_url': None
+                })
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
@@ -517,26 +538,45 @@ async def send_message(request: MessageRequest):
 
         # Create new speech thread with the response
         def speak_and_notify():
-                    # Generate speech first
-                    cache_path = get_cache_path(cleaned_response)
-                    if not cache_path.exists():
+            try:
+                # Generate speech first
+                cache_path = get_cache_path(cleaned_response)
+                speech_ready = False
+                audio_url = None
+                
+                if not cache_path.exists():
+                    try:
                         generate_speech(cleaned_response, cache_path)
-                    
-                    # Get audio file hash for URL
+                        speech_ready = True
+                    except Exception as e:
+                        logger.error(f"Speech generation failed: {e}")
+                        # Continue without audio
+                else:
+                    speech_ready = True
+                
+                if speech_ready:
                     audio_hash = hashlib.md5(cleaned_response.encode()).hexdigest()
-                    
-                    # Once speech is ready, send the actual message with audio URL
-                    pusher.trigger('interview-channel', 'ai-response', {
-                        'type': 'ai_response',
-                        'message': cleaned_response,
-                        'message_id': message_id,
-                        'speech_ready': audio_enabled,
-                        'audio_url': f"/api/audio/{audio_hash}" if audio_enabled else None
-                    })
-                    
-                    # Then generate speech if audio is enabled
-                    if audio_enabled:
-                        speak_text(cleaned_response)
+                    audio_url = f"/api/audio/{audio_hash}"
+                
+                # Send message with audio status
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': speech_ready,
+                    'audio_url': audio_url
+                })
+                
+            except Exception as e:
+                logger.error(f"Error in speak_and_notify thread: {e}")
+                # Ensure message is sent even if speech fails
+                pusher.trigger('interview-channel', 'ai-response', {
+                    'type': 'ai_response',
+                    'message': cleaned_response,
+                    'message_id': message_id,
+                    'speech_ready': False,
+                    'audio_url': None
+                })
 
         speech_thread = threading.Thread(target=speak_and_notify)
         speech_thread.start()
