@@ -292,30 +292,24 @@ def reset_interview_state(resume_data: Dict[str, Any]):
 # Updated prompt template
 interview_prompt = PromptTemplate(
     input_variables=["input"],
-    template="""You are an expert technical interviewer conducting a professional interview. Your responses should be direct and focused on technical substance.
+    template="""You are an expert AI interviewer specializing in technical and behavioral job interviews. Your responses should be natural, empathetic, and adaptive.
 
 Key Behaviors:
-1. Analyze responses internally without exposing assessment
-2. Reference specific technical concepts mentioned by the candidate
-3. Ask focused questions that build on previous responses
-4. Maintain professional tone throughout
-5. Keep responses concise and technical
-
-Response Format:
-"[Direct technical feedback referencing specific concepts]
-[Single focused technical question]"
-
-Example Response:
-"Your implementation of Redux middleware demonstrates understanding of state management patterns. How do you handle race conditions in asynchronous Redux actions?"
+1. Analyze candidate responses for technical depth and adjust follow-up complexity accordingly
+2. Recognize emotional tone and adapt your interviewing style
+3. Provide brief, constructive feedback before asking follow-up questions
+4. Use varied, natural language patterns instead of rigid questioning
+5. Reference the candidate's specific experience and skills from their resume
+6. If a candidate shows frustration or hostility, respond with empathy and offer to adjust the interview style
 
 {input}
 
-Guidelines:
-1. Never expose internal analysis or tracking notes
-2. Avoid phrases like "basic/intermediate/advanced"
-3. Don't use conversational fillers ("Great", "Interesting", etc.)
-4. Keep responses under 3 sentences total
-5. Focus on technical concepts mentioned by candidate"""
+Remember:
+1. Keep responses conversational and engaging
+2. Ask one question at a time
+3. Wait for candidate responses before proceeding
+4. Provide brief feedback on technical answers
+5. Maintain a professional yet friendly tone"""
 )
 
 llm_chain = LLMChain(
@@ -355,10 +349,9 @@ async def start_interview(request: InterviewRequest):
         Resume: {json.dumps(request.resume_data, indent=2)}
         Job Description: {request.job_description}
         
-        Format your response as:
-        "I'm [role] for [position]. Based on your experience with [key skills], I'd like to discuss your technical background.
-        
-        [Single focused technical question about most relevant skill]"
+        Provide ONE brief, friendly introduction and ask ONE initial technical question relevant to their background.
+        Keep your response under 150 words.
+        Do not generate multiple responses or follow-up questions.
         
         Guidelines:
         - Keep introduction under 2 sentences
@@ -473,30 +466,19 @@ async def send_message(request: MessageRequest):
                 Job Description: {request.job_description}"""
             else:
                 # Continue with current topic
-                input_text = f"""Context:
-                    Previous Messages: {str(memory.chat_memory.messages)}
-                    Current Response: {request.message}
-                    Resume: {json.dumps(request.resume_data)}
-                    Job Description: {request.job_description}
-                    
-                    Instructions:
-                    1. Analyze technical depth internally (do not output analysis)
-                    2. Provide direct technical feedback focusing on specific concepts mentioned
-                    3. Ask one focused follow-up question
-                    4. Track topic coverage internally (do not output tracking)
-                    
-                    Response Format:
-                    [Technical feedback focusing on specific concepts, without analysis notes]
-                    [Single focused technical question]
-                    
-                    Example:
-                    "Your explanation of state management shows practical implementation knowledge. How do you handle side effects in complex React components?"
-                    
-                    Rules:
-                    - Do not include any [internal notes] or analysis in the output
-                    - Keep responses direct and professional
-                    - Focus on technical concepts mentioned by the candidate
-                    - Avoid phrases like "basic/intermediate/advanced" in output"""
+                input_text = f"""Previous conversation: {str(memory.chat_memory.messages)}
+                
+                Candidate's response: {request.message}
+                
+                Based on the candidate's response and their background:
+                1. Analyze technical depth (basic/intermediate/advanced)
+                2. Provide brief constructive feedback
+                3. Ask ONE relevant follow-up question
+                4. Keep the conversation focused and professional
+                5. Reference their specific experience when relevant
+                
+                Resume Data: {json.dumps(request.resume_data)}
+                Job Description: {request.job_description}"""
             
             response = await predict_with_retries(llm_chain, input_text)
             cleaned_response = response.split('"""')[0].strip()
