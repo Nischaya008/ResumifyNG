@@ -206,6 +206,25 @@ load_dotenv()
 from langchain_together import Together
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+# Add retry logic for LLM chain at module level
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
+async def predict_with_retries(chain, text):
+    try:
+        response = await chain.apredict(input=text)
+        if not response:
+            raise ValueError("Empty response received from LLM")
+        return response
+    except Exception as e:
+        logger.error(f"LLM generation error: {str(e)}", exc_info=True)
+        if "rate limit" in str(e).lower():
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+        elif "token limit" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Input too long. Please provide a shorter resume or job description.")
+        raise
+
 together_api_key = os.getenv("TOGETHER_API_KEY")
 if not together_api_key:
     raise ValueError("TOGETHER_API_KEY environment variable is not set")
@@ -333,25 +352,6 @@ async def start_interview(request: InterviewRequest):
         Provide ONE brief, friendly introduction and ask ONE initial technical question relevant to their background.
         Keep your response under 150 words.
         Do not generate multiple responses or follow-up questions."""
-        
-        # Add retry logic for LLM chain
-        @retry(
-            stop=stop_after_attempt(3),
-            wait=wait_exponential(multiplier=1, min=4, max=10)
-        )
-        async def predict_with_retries(chain, text):
-            try:
-                response = await chain.apredict(input=text)
-                if not response:
-                    raise ValueError("Empty response received from LLM")
-                return response
-            except Exception as e:
-                logger.error(f"LLM generation error: {str(e)}", exc_info=True)
-                if "rate limit" in str(e).lower():
-                    raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
-                elif "token limit" in str(e).lower():
-                    raise HTTPException(status_code=400, detail="Input too long. Please provide a shorter resume or job description.")
-                raise
 
         # Get initial response with retries
         initial_response = await predict_with_retries(llm_chain, input_text)
