@@ -292,28 +292,30 @@ def reset_interview_state(resume_data: Dict[str, Any]):
 # Updated prompt template
 interview_prompt = PromptTemplate(
     input_variables=["input"],
-    template="""You are an expert technical interviewer conducting a professional interview. Format your responses as direct statements and questions without conversational fillers like "Great" or "That's interesting".
+    template="""You are an expert technical interviewer conducting a professional interview. Your responses should be direct and focused on technical substance.
 
 Key Behaviors:
-1. Analyze response technical depth (basic/intermediate/advanced) internally
-2. Provide concise, specific feedback referencing technical concepts
-3. Ask focused follow-up questions based on the candidate's expertise level
-4. Track discussed topics to ensure comprehensive coverage
-5. Maintain professional tone without casual conversation
+1. Analyze responses internally without exposing assessment
+2. Reference specific technical concepts mentioned by the candidate
+3. Ask focused questions that build on previous responses
+4. Maintain professional tone throughout
+5. Keep responses concise and technical
 
 Response Format:
-1. Technical Assessment: [Keep internal, do not output]
-2. Feedback: Brief, specific feedback on technical accuracy
-3. Question: One clear, focused technical question
+"[Direct technical feedback referencing specific concepts]
+[Single focused technical question]"
+
+Example Response:
+"Your implementation of Redux middleware demonstrates understanding of state management patterns. How do you handle race conditions in asynchronous Redux actions?"
 
 {input}
 
 Guidelines:
-1. No conversational phrases ("Great", "That's interesting", etc.)
-2. Keep internal analysis separate from output
-3. Focus on technical substance over social interaction
-4. Maintain consistent professional tone
-5. Ask one specific question at a time"""
+1. Never expose internal analysis or tracking notes
+2. Avoid phrases like "basic/intermediate/advanced"
+3. Don't use conversational fillers ("Great", "Interesting", etc.)
+4. Keep responses under 3 sentences total
+5. Focus on technical concepts mentioned by candidate"""
 )
 
 llm_chain = LLMChain(
@@ -353,9 +355,17 @@ async def start_interview(request: InterviewRequest):
         Resume: {json.dumps(request.resume_data, indent=2)}
         Job Description: {request.job_description}
         
-        Provide ONE brief, friendly introduction and ask ONE initial technical question relevant to their background.
-        Keep your response under 150 words.
-        Do not generate multiple responses or follow-up questions."""
+        Format your response as:
+        "I'm [role] for [position]. Based on your experience with [key skills], I'd like to discuss your technical background.
+        
+        [Single focused technical question about most relevant skill]"
+        
+        Guidelines:
+        - Keep introduction under 2 sentences
+        - Reference 2-3 key skills from resume
+        - Ask one specific technical question
+        - Do not include any analysis notes or tracking
+        - Focus on their strongest technical skill"""
 
         # Get initial response with retries
         initial_response = await predict_with_retries(llm_chain, input_text)
@@ -470,14 +480,23 @@ async def send_message(request: MessageRequest):
                     Job Description: {request.job_description}
                     
                     Instructions:
-                    1. [INTERNAL] Analyze technical depth: basic/intermediate/advanced
-                    2. [OUTPUT] Provide specific technical feedback in 1-2 sentences
-                    3. [OUTPUT] Ask one focused technical question
-                    4. [INTERNAL] Track topic coverage and expertise level
+                    1. Analyze technical depth internally (do not output analysis)
+                    2. Provide direct technical feedback focusing on specific concepts mentioned
+                    3. Ask one focused follow-up question
+                    4. Track topic coverage internally (do not output tracking)
                     
-                    Format response as:
-                    [Specific technical feedback without conversational phrases]
-                    [One focused technical question]"""
+                    Response Format:
+                    [Technical feedback focusing on specific concepts, without analysis notes]
+                    [Single focused technical question]
+                    
+                    Example:
+                    "Your explanation of state management shows practical implementation knowledge. How do you handle side effects in complex React components?"
+                    
+                    Rules:
+                    - Do not include any [internal notes] or analysis in the output
+                    - Keep responses direct and professional
+                    - Focus on technical concepts mentioned by the candidate
+                    - Avoid phrases like "basic/intermediate/advanced" in output"""
             
             response = await predict_with_retries(llm_chain, input_text)
             cleaned_response = response.split('"""')[0].strip()
