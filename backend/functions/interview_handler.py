@@ -539,12 +539,12 @@ def generate_appropriate_response(message: str, sentiment: tuple[float, float]) 
     polarity, subjectivity = sentiment
     
     if polarity < -0.3:  # Negative sentiment detected
-        return """Let's adjust our approach:
-1. Proceed with a different technical area
-2. Focus on system design
-3. Discuss project architecture
+        return """I understand that you may be upset. Let's take a constructive approach:  
+1. Explore a different technical topic.  
+2. Discuss ethical considerations in technology.  
+3. Engage in a thoughtful discussion on innovation and future trends.  
 
-Which technical topic would you prefer to explore?"""
+Which direction would you like to explore?"""
     
     return None  # Continue with normal interview flow
 
