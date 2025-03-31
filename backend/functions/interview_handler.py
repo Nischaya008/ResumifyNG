@@ -116,6 +116,9 @@ except Exception as e:
 is_muted = False
 current_speech_thread = None
 
+# Import retry utilities
+from tenacity import retry, stop_after_attempt, wait_exponential
+
 def get_cache_path(text: str) -> pathlib.Path:
     """Generate a cache file path for the given text"""
     text_hash = hashlib.md5(text.encode()).hexdigest()
@@ -220,7 +223,6 @@ load_dotenv()
 
 # Initialize Together.ai client
 from langchain_together import Together
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Add retry logic for LLM chain at module level
 @retry(
