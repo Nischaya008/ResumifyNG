@@ -7,7 +7,7 @@ pip>=23.0.1
 # Core numerical packages (install first)
 numpy==1.24.3
 scipy==1.11.4
-pandas==2.1.4
+pandas>=1.4,<2.0
 
 # Web framework and deployment
 fastapi==0.95.0
