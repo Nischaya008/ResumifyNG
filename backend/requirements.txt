@@ -37,7 +37,7 @@ websockets==11.0.0
 tenacity>=8.0.0  # For retry functionality
 
 # Audio processing
-gTTS==2.3.2
+edge-tts==6.1.9
 pygame==2.5.0
 pydub==0.25.1
 ffmpeg-python==0.2.0
