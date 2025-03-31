@@ -36,15 +36,16 @@ from pydantic import BaseModel
 from textblob import TextBlob
 import uuid
 import threading
-from gtts import gTTS
 import pygame
 import hashlib
 import pathlib
 import shutil
 import time
 import platform
+import asyncio
 from pydub import AudioSegment
 from pydub.utils import which
+import edge_tts
 
 def get_ffmpeg_path():
     """Get ffmpeg binary path based on platform and environment"""
@@ -123,13 +124,12 @@ def get_cache_path(text: str) -> pathlib.Path:
     """Generate a cache file path for the given text"""
     text_hash = hashlib.md5(text.encode()).hexdigest()
     return CACHE_DIR / f"{text_hash}.mp3"
-
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10)
 )
-def generate_speech(text: str, cache_path: pathlib.Path):
-    """Generate speech audio file using gTTS and adjust speed with pydub if available"""
+async def generate_speech(text: str, cache_path: pathlib.Path):
+    """Generate speech audio file using edge-tts and adjust speed with pydub if available"""
     def get_temp_path():
         """Generate a unique temporary file path"""
         return cache_path.parent / f"temp_{uuid.uuid4().hex}.mp3"
@@ -137,20 +137,17 @@ def generate_speech(text: str, cache_path: pathlib.Path):
     temp_path = get_temp_path()
     
     try:
-        # Generate initial speech with gTTS
-        tts = gTTS(text=text, lang='en', slow=False)
+        # Generate initial speech with edge-tts
+        communicate = edge_tts.Communicate(text, 'en-US-ChristopherNeural')
         
         # Retry TTS save with exponential backoff
         try:
-            tts.save(str(temp_path))
+            await communicate.save(str(temp_path))
             logger.debug(f"Generated initial speech file at {temp_path}")
         except Exception as e:
-            if "429" in str(e):
-                logger.warning("TTS rate limit hit, retrying with backoff...")
-                time.sleep(5)  # Initial backoff before retry
-                tts.save(str(temp_path))
-            else:
-                raise
+            logger.warning(f"TTS generation error: {e}, retrying with backoff...")
+            time.sleep(5)  # Initial backoff before retry
+            await communicate.save(str(temp_path))
         
         try:
             # Load and process audio
@@ -184,8 +181,9 @@ def generate_speech(text: str, cache_path: pathlib.Path):
                 temp_path.unlink()
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
+            logger.error(f"Cleanup error: {e}")
 
-def speak_text(text, force=False):
+async def speak_text(text, force=False):
     """Generate speech audio file (actual playback happens in browser)"""
     global is_muted
     
@@ -196,7 +194,7 @@ def speak_text(text, force=False):
             
             # Generate audio file if not in cache
             if not cache_path.exists():
-                generate_speech(text, cache_path)
+                await generate_speech(text, cache_path)
                 logger.debug(f"Generated audio file at {cache_path}")
             
         except Exception as e:
@@ -214,8 +212,14 @@ async def toggle_mute(request: MuteRequest):
     
     # When unmuting, ensure the last message's audio is ready
     if not is_muted and request.last_message:
-        # Generate audio in background thread if needed
-        threading.Thread(target=speak_text, args=(request.last_message, True)).start()
+        # Run async function in a new event loop in a separate thread
+        def run_async_speech():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(speak_text(request.last_message, True))
+            loop.close()
+        
+        threading.Thread(target=run_async_speech).start()
     
     return {"status": "success", "muted": is_muted}
 
@@ -406,7 +410,7 @@ async def start_interview(request: InterviewRequest):
         })
 
         # Create new speech thread with the response
-        def speak_and_notify():
+        async def async_speak_and_notify():
             try:
                 # Generate speech first
                 cache_path = get_cache_path(cleaned_response)
@@ -415,7 +419,7 @@ async def start_interview(request: InterviewRequest):
                 
                 if not cache_path.exists():
                     try:
-                        generate_speech(cleaned_response, cache_path)
+                        await generate_speech(cleaned_response, cache_path)
                         speech_ready = True
                     except Exception as e:
                         logger.error(f"Speech generation failed: {e}")
@@ -447,7 +451,14 @@ async def start_interview(request: InterviewRequest):
                     'audio_url': None
                 })
 
-        speech_thread = threading.Thread(target=speak_and_notify)
+        # Run async function in a new event loop in a separate thread
+        def run_async_speech():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(async_speak_and_notify())
+            loop.close()
+
+        speech_thread = threading.Thread(target=run_async_speech)
         speech_thread.start()
         
         return {"status": "success", "message": "Interview started"}
@@ -537,7 +548,7 @@ async def send_message(request: MessageRequest):
         })
 
         # Create new speech thread with the response
-        def speak_and_notify():
+        async def async_speak_and_notify():
             try:
                 # Generate speech first
                 cache_path = get_cache_path(cleaned_response)
@@ -546,7 +557,7 @@ async def send_message(request: MessageRequest):
                 
                 if not cache_path.exists():
                     try:
-                        generate_speech(cleaned_response, cache_path)
+                        await generate_speech(cleaned_response, cache_path)
                         speech_ready = True
                     except Exception as e:
                         logger.error(f"Speech generation failed: {e}")
@@ -578,7 +589,14 @@ async def send_message(request: MessageRequest):
                     'audio_url': None
                 })
 
-        speech_thread = threading.Thread(target=speak_and_notify)
+        # Run async function in a new event loop in a separate thread
+        def run_async_speech():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(async_speak_and_notify())
+            loop.close()
+
+        speech_thread = threading.Thread(target=run_async_speech)
         speech_thread.start()
         
         return {"status": "success"}
