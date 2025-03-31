@@ -292,24 +292,28 @@ def reset_interview_state(resume_data: Dict[str, Any]):
 # Updated prompt template
 interview_prompt = PromptTemplate(
     input_variables=["input"],
-    template="""You are an expert AI interviewer specializing in technical and behavioral job interviews. Your responses should be natural, empathetic, and adaptive.
+    template="""You are an expert technical interviewer conducting a professional interview. Format your responses as direct statements and questions without conversational fillers like "Great" or "That's interesting".
 
 Key Behaviors:
-1. Analyze candidate responses for technical depth and adjust follow-up complexity accordingly
-2. Recognize emotional tone and adapt your interviewing style
-3. Provide brief, constructive feedback before asking follow-up questions
-4. Use varied, natural language patterns instead of rigid questioning
-5. Reference the candidate's specific experience and skills from their resume
-6. If a candidate shows frustration or hostility, respond with empathy and offer to adjust the interview style
+1. Analyze response technical depth (basic/intermediate/advanced) internally
+2. Provide concise, specific feedback referencing technical concepts
+3. Ask focused follow-up questions based on the candidate's expertise level
+4. Track discussed topics to ensure comprehensive coverage
+5. Maintain professional tone without casual conversation
+
+Response Format:
+1. Technical Assessment: [Keep internal, do not output]
+2. Feedback: Brief, specific feedback on technical accuracy
+3. Question: One clear, focused technical question
 
 {input}
 
-Remember:
-1. Keep responses conversational and engaging
-2. Ask one question at a time
-3. Wait for candidate responses before proceeding
-4. Provide brief feedback on technical answers
-5. Maintain a professional yet friendly tone"""
+Guidelines:
+1. No conversational phrases ("Great", "That's interesting", etc.)
+2. Keep internal analysis separate from output
+3. Focus on technical substance over social interaction
+4. Maintain consistent professional tone
+5. Ask one specific question at a time"""
 )
 
 llm_chain = LLMChain(
@@ -459,19 +463,21 @@ async def send_message(request: MessageRequest):
                 Job Description: {request.job_description}"""
             else:
                 # Continue with current topic
-                input_text = f"""Previous conversation: {str(memory.chat_memory.messages)}
-                
-                Candidate's response: {request.message}
-                
-                Based on the candidate's response and their background:
-                1. Analyze technical depth (basic/intermediate/advanced)
-                2. Provide brief constructive feedback
-                3. Ask ONE relevant follow-up question
-                4. Keep the conversation focused and professional
-                5. Reference their specific experience when relevant
-                
-                Resume Data: {json.dumps(request.resume_data)}
-                Job Description: {request.job_description}"""
+                input_text = f"""Context:
+                    Previous Messages: {str(memory.chat_memory.messages)}
+                    Current Response: {request.message}
+                    Resume: {json.dumps(request.resume_data)}
+                    Job Description: {request.job_description}
+                    
+                    Instructions:
+                    1. [INTERNAL] Analyze technical depth: basic/intermediate/advanced
+                    2. [OUTPUT] Provide specific technical feedback in 1-2 sentences
+                    3. [OUTPUT] Ask one focused technical question
+                    4. [INTERNAL] Track topic coverage and expertise level
+                    
+                    Format response as:
+                    [Specific technical feedback without conversational phrases]
+                    [One focused technical question]"""
             
             response = await predict_with_retries(llm_chain, input_text)
             cleaned_response = response.split('"""')[0].strip()
@@ -532,11 +538,12 @@ def generate_appropriate_response(message: str, sentiment: tuple[float, float]) 
     polarity, subjectivity = sentiment
     
     if polarity < -0.3:  # Negative sentiment detected
-        return """I sense some frustration, which is completely understandable. Would you like to:
-        1. Take a brief moment before continuing
-        2. Adjust the interview style or pace
-        3. Focus on a different area
-        Please let me know your preference."""
+        return """Let's adjust our approach:
+1. Proceed with a different technical area
+2. Focus on system design
+3. Discuss project architecture
+
+Which technical topic would you prefer to explore?"""
     
     return None  # Continue with normal interview flow
 
