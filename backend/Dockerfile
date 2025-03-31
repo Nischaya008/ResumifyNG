@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     gcc \
     g++ \
+    espeak-ng \
+    libespeak-ng1 \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
