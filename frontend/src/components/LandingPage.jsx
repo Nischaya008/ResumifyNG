@@ -6,6 +6,7 @@ import './LandingPage.css'
 import { FaGithub, FaLinkedin, FaTwitter } from 'react-icons/fa'
 import { GiArrowWings } from "react-icons/gi";
 import BrowserWarningModal from './BrowserWarningModal'
+import TrueFocus from './TrueFocus'
 
 function Typewriter({ roles, typingSpeed = 150, pauseTime = 1000 }) {
   const [index, setIndex] = useState(0);
@@ -309,13 +310,21 @@ const isGoogleChrome = useCallback(() => {
     <div ref={containerRef} className="landing-page">
       <div className="scroll-container">
         <section id="hero" className="section hero-section" style={{ marginTop: '-70px' }}>
-          <motion.h1
+          <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            Welcome to ResumifyNG
-          </motion.h1>
+            <TrueFocus 
+              sentence="Welcome to ResumifyNG"
+              manualMode={false}
+              blurAmount={5}
+              borderColor="#C1B09B"
+              glowColor="rgba(193, 176, 155, 0.6)"
+              animationDuration={0.5}
+              pauseBetweenAnimations={1}
+            />
+          </motion.div>
           <motion.p
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
