@@ -40,6 +40,12 @@
   margin-bottom: 1.5rem;
 }
 
+.file-input-wrapper.drag-active {
+  border-color: var(--accent);
+  background-color: rgba(var(--primary-rgb), 0.1);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
 .file-input-label {
   display: flex;
   flex-direction: column;
