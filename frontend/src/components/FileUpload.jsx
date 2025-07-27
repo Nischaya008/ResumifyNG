@@ -4,6 +4,7 @@ import './FileUpload.css'
 
 function FileUpload({ onSubmit, isLoading }) {
   const [file, setFile] = useState(null)
+  const [dragActive, setDragActive] = useState(false)
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
@@ -13,6 +14,38 @@ function FileUpload({ onSubmit, isLoading }) {
     } else {
       alert('Please upload a PDF or DOCX file')
     }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFile = e.dataTransfer.files[0]
+      if (droppedFile.type === 'application/pdf' || droppedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        setFile(droppedFile)
+      } else {
+        alert('Please upload a PDF or DOCX file')
+      }
+    }
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(true)
+  }
+
+  const handleDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
   }
 
   const handleSubmit = (e) => {
@@ -42,7 +75,13 @@ function FileUpload({ onSubmit, isLoading }) {
       </div>
       
       <form onSubmit={handleSubmit}>
-        <div className="file-input-wrapper">
+        <div 
+          className={`file-input-wrapper${dragActive ? ' drag-active' : ''}`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+        >
           <label className="file-input-label" htmlFor="resume-file">
             {getFileIcon()}
             <span className="file-input-text">
