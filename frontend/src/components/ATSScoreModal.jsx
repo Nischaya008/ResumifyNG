@@ -17,7 +17,6 @@ function ATSScoreModal({ data, onClose }) {
       return;
     }
     // 1. Create order from backend
-    document.body.style.cursor = 'auto'; // Remove custom cursor before payment
     const res = await fetch(`${BACKEND_URL}/api/create-order`, { method: 'POST' });
     const { orderId, key } = await res.json();
 
@@ -53,9 +52,6 @@ function ATSScoreModal({ data, onClose }) {
 
     // 4. Open Razorpay checkout
     const rzp = new window.Razorpay(options);
-    rzp.on('modal.closed', function() {
-      document.body.style.cursor = '';
-    });
     rzp.open();
   }
 
