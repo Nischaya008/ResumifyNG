@@ -53,6 +53,29 @@ ResumifyNG is an advanced AI-driven platform designed to enhance resumes, analyz
 
 ---
 
+## 💳 Payment System
+
+ResumifyNG includes a secure and modern payment system to enable premium features and services.
+
+### **Features**
+- **Multiple Payment Methods:** Supports major credit/debit cards and UPI (where available).
+- **Seamless Integration:** Payments are integrated directly into the user flow for unlocking premium resume enhancements, advanced interview coaching, and other value-added services.
+- **Secure Processing:** All transactions are handled via trusted payment gateways with PCI DSS compliance. Sensitive data is never stored on our servers.
+- **Instant Access:** Upon successful payment, users immediately gain access to premium features without delay.
+- **Receipts & Invoices:** Users receive email receipts for every transaction.
+
+### **Where Payments Are Required**
+- Accessing advanced resume enhancement and ATS optimization features.
+- Unlocking full interview coaching sessions and analytics.
+- Other premium tools and resources as listed in the app.
+
+### **Security**
+- All payment data is encrypted in transit (HTTPS/TLS).
+- No card or sensitive payment data is stored on ResumifyNG servers.
+- Regular security audits and compliance checks are performed.
+
+---
+
 ## 🌐 API Endpoints
 
 ### **Resume Processing**
