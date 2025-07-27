@@ -241,9 +241,12 @@ function AppContent() {
 
   return (
     <>
-      <Portal>
-        <div className={`custom-cursor ${isHovering ? 'hover' : ''}`} ref={cursorRef} />
-      </Portal>
+      {/* Hide custom cursor when ATSScoreModal is open */}
+      {!showATSModal && (
+        <Portal>
+          <div className={`custom-cursor ${isHovering ? 'hover' : ''}`} ref={cursorRef} />
+        </Portal>
+      )}
       <div className={`app-container ${(!isDocumentSubmitted || !isJobDescriptionSubmitted) && location.pathname === '/app' ? 'no-scroll' : ''} ${isJobDescriptionSubmitted && location.pathname === '/app' ? 'show-scrollbar' : ''}`}>
       {location.pathname !== '/' && location.pathname !== '' && location.pathname !== '/interview' && (
         <Link to="/" className="header" style={{ textDecoration: 'none' }}>
