@@ -2,10 +2,57 @@ import React from 'react'
 import Portal from './Portal'
 import './ATSScoreModal.css'
 
+// Set your deployed backend URL here
+const BACKEND_URL = 'https://resumifyng-backend.onrender.com';
+
 function ATSScoreModal({ data, onClose }) {
-  const handleStartInterview = () => {
-    // Navigate to interview page
-    window.location.href = '/interview'
+  const handleStartInterview = async () => {
+    // Ensure Razorpay script is loaded
+    if (!window.Razorpay) {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      document.body.appendChild(script);
+      script.onload = () => handleStartInterview();
+      return;
+    }
+    // 1. Create order from backend
+    const res = await fetch(`${BACKEND_URL}/api/create-order`, { method: 'POST' });
+    const { orderId, key } = await res.json();
+
+    // 2. Configure Razorpay options
+    const options = {
+      key,
+      amount: 1900, // 19 INR in paise
+      currency: 'INR',
+      name: 'ResumifyNG',
+      description: 'Interview Session',
+      order_id: orderId,
+      handler: async function (response) {
+        // 3. Verify payment on backend
+        const verifyRes = await fetch(`${BACKEND_URL}/api/verify-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(response),
+        });
+        if (verifyRes.ok) {
+          // Payment successful, allow interview
+          window.location.href = '/interview';
+        } else {
+          alert('Payment verification failed. Please try again.');
+        }
+      },
+      prefill: {
+        // Optionally prefill user info
+        email: 'user@example.com',
+        contact: '9999999999',
+      },
+      theme: { color: '#3399cc' },
+    };
+
+    // 4. Open Razorpay checkout
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   }
 
   return (
