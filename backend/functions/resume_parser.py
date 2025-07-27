@@ -215,6 +215,8 @@ async def upload_resume(file: UploadFile = File(...)):
 @router.post("/generate_ats")
 async def generate_ats(resume_data: dict, job_description: str = Body(None)):
     try:
+        import re
+        from collections import Counter
         # Extract sections from the resume data
         personal_details = resume_data.get("Personal Details", {})
         skills = resume_data.get("Skills", [])
@@ -225,10 +227,37 @@ async def generate_ats(resume_data: dict, job_description: str = Body(None)):
         coursework = resume_data.get("Coursework", [])
         hobbies = resume_data.get("Hobbies", [])
 
-        # Calculate scores for each section with penalties for missing sections
-        total_score = 0
-        total_weight = sum(weights.values())
-        total_word_count = sum(len(section.split()) for section in [
+        # --- 1. Section Completeness ---
+        section_names = ["Skills", "Experience", "Projects", "Education", "Achievements", "Coursework", "Hobbies"]
+        section_data = [skills, experience, projects, education, achievements, coursework, hobbies]
+        section_completeness = sum(1 for s in section_data if s) / len(section_data)
+
+        # --- 2. Keyword Extraction from Job Description ---
+        job_keywords = set()
+        job_titles = set()
+        required_skills = set()
+        preferred_skills = set()
+        certs = set()
+        if job_description:
+            job_doc = nlp(job_description)
+            for ent in job_doc.ents:
+                if ent.label_ in ["SKILL", "ORG", "PRODUCT"]:
+                    job_keywords.add(ent.text.lower())
+                if ent.label_ == "TITLE":
+                    job_titles.add(ent.text.lower())
+                if ent.label_ == "CERTIFICATE":
+                    certs.add(ent.text.lower())
+            # Fallback: extract capitalized words and common skill patterns
+            job_keywords.update([w.lower() for w in re.findall(r"[A-Za-z0-9\+\#\.]+", job_description) if len(w) > 2])
+            # Heuristic: required skills ("must have", "required")
+            for line in job_description.split("\n"):
+                if "must have" in line.lower() or "required" in line.lower():
+                    required_skills.update([w.lower() for w in re.findall(r"[A-Za-z0-9\+\#\.]+", line) if len(w) > 2])
+                if "preferred" in line.lower() or "nice to have" in line.lower():
+                    preferred_skills.update([w.lower() for w in re.findall(r"[A-Za-z0-9\+\#\.]+", line) if len(w) > 2])
+
+        # --- 3. Resume Keyword Matching ---
+        resume_text = " ".join([
             " ".join(skills),
             " ".join(experience),
             " ".join(projects),
@@ -236,51 +265,96 @@ async def generate_ats(resume_data: dict, job_description: str = Body(None)):
             " ".join(achievements),
             " ".join(coursework),
             " ".join(hobbies)
-        ])
+        ]).lower()
+        resume_words = set(re.findall(r"[A-Za-z0-9\+\#\.]+", resume_text))
+        # Exact keyword match
+        matched_keywords = job_keywords & resume_words
+        matched_required = required_skills & resume_words
+        matched_preferred = preferred_skills & resume_words
+        matched_titles = job_titles & resume_words
+        matched_certs = certs & resume_words
+        # Contextual: keywords in experience/projects
+        exp_proj_text = " ".join(experience + projects).lower()
+        contextual_matches = job_keywords & set(re.findall(r"[A-Za-z0-9\+\#\.]+", exp_proj_text))
 
-        # Function to calculate section score with penalties
-        def calculate_section_score(section, weight):
-            if not section:
-                return -weight  # Penalty for missing section
-            return (len(section) / total_word_count) * weight
+        # --- 4. Synonym/Partial Matching (spaCy similarity) ---
+        nlp_keywords = [nlp(k) for k in job_keywords]
+        nlp_resume_words = [nlp(w) for w in resume_words]
+        synonym_matches = 0
+        for kw in nlp_keywords:
+            for rw in nlp_resume_words:
+                if kw.similarity(rw) > 0.85:
+                    synonym_matches += 1
+                    break
 
-        total_score += calculate_section_score(" ".join(skills), weights["Skills"])
-        total_score += calculate_section_score(" ".join(experience), weights["Experience"])
-        total_score += calculate_section_score(" ".join(projects), weights["Projects"])
-        total_score += calculate_section_score(" ".join(education), weights["Education"])
-        total_score += calculate_section_score(" ".join(achievements), weights["Achievements"])
-        total_score += calculate_section_score(" ".join(coursework), weights["Coursework"])
-        total_score += calculate_section_score(" ".join(hobbies), weights["Hobbies"])
+        # --- 5. Experience Quantification ---
+        years_exp = 0
+        for line in experience:
+            match = re.search(r"(\d+)\s*(?:years|yrs|year)", line.lower())
+            if match:
+                years_exp += int(match.group(1))
+        years_exp = min(years_exp, 20)  # Cap at 20 for scoring
 
-        # Normalize ATS score to a percentage
-        ats_score = max(0, (total_score / total_weight) * 100)
+        # --- 6. Quantified Achievements ---
+        quantified_achievements = 0
+        for line in achievements + experience:
+            if re.search(r"\b(\d+%|\$\d+|increased|reduced|improved|grew|decreased)\b", line.lower()):
+                quantified_achievements += 1
 
-        # Job description matching (if provided)
-        if job_description:
-            resume_text = " ".join([
-                " ".join(skills),
-                " ".join(experience),
-                " ".join(projects),
-                " ".join(education),
-                " ".join(achievements),
-                " ".join(coursework)
-            ])
+        # --- 7. Error Checking (basic spelling/grammar) ---
+        # (Optional: Uncomment if language_tool_python is available)
+        # import language_tool_python
+        # tool = language_tool_python.LanguageTool('en-US')
+        # matches = tool.check(resume_text)
+        # error_count = len(matches)
+        # For now, use a simple typo check:
+        error_count = sum(1 for w in resume_words if len(w) > 3 and w.count(w[0]) == len(w))  # e.g., 'aaaaa'
 
-            # Calculate TF-IDF vectors
-            vectorizer = TfidfVectorizer()
-            tfidf_matrix = vectorizer.fit_transform([resume_text, job_description])
-            similarity_matrix = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])
-            job_description_similarity = similarity_matrix[0][0] * 100  # Convert to percentage
+        # --- 8. Section Formatting (penalize missing sections) ---
+        missing_sections = [name for name, data in zip(section_names, section_data) if not data]
 
-            # Combine ATS score with job description similarity
-            final_score = (ats_score * 0.7) + (job_description_similarity * 0.3)
-        else:
-            final_score = ats_score
-
-        # Ensure final score is between 0% and 100%
+        # --- 9. Scoring ---
+        # Weights: keyword/context (50), experience (15), quantified (10), section (10), error (5), formatting (10)
+        score_keyword = (len(matched_keywords) + 0.5 * len(matched_preferred) + 1.5 * len(matched_required) + 0.5 * len(matched_titles) + 0.5 * len(matched_certs) + 0.5 * synonym_matches) / (len(job_keywords) + 1)  # avoid div0
+        score_context = (len(contextual_matches) / (len(job_keywords) + 1))
+        score_experience = years_exp / 20
+        score_quantified = min(quantified_achievements, 5) / 5
+        score_section = section_completeness
+        score_error = max(0, 1 - error_count / 10)
+        score_formatting = max(0, 1 - len(missing_sections) / len(section_names))
+        # Weighted sum
+        final_score = (
+            0.35 * score_keyword +
+            0.15 * score_context +
+            0.15 * score_experience +
+            0.10 * score_quantified +
+            0.10 * score_section +
+            0.05 * score_error +
+            0.10 * score_formatting
+        ) * 100
         final_score = max(0, min(final_score, 100))
 
-        return JSONResponse(content={"ats_score": final_score})
+        # --- 10. Detailed Breakdown ---
+        breakdown = {
+            "keyword_match": round(score_keyword * 100, 1),
+            "contextual_match": round(score_context * 100, 1),
+            "experience": round(score_experience * 100, 1),
+            "quantified_achievements": round(score_quantified * 100, 1),
+            "section_completeness": round(score_section * 100, 1),
+            "error_free": round(score_error * 100, 1),
+            "formatting": round(score_formatting * 100, 1),
+            "missing_sections": missing_sections,
+            "matched_keywords": list(matched_keywords),
+            "matched_required": list(matched_required),
+            "matched_preferred": list(matched_preferred),
+            "matched_titles": list(matched_titles),
+            "matched_certs": list(matched_certs),
+            "synonym_matches": int(synonym_matches),
+            "years_experience": years_exp,
+            "quantified_achievements_count": quantified_achievements,
+            "error_count": error_count
+        }
+        return JSONResponse(content={"ats_score": round(final_score, 1), "breakdown": breakdown})
 
     except Exception as e:
         logging.error(f"Error generating ATS score: {e}")
