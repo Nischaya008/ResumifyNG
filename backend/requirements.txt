@@ -21,7 +21,7 @@ python-dotenv==1.0.0
 # Document processing
 pymupdf==1.22.0
 python-docx==0.8.11
-
+razorpay
 # NLP and ML
 spacy==3.5.4
 scikit-learn==1.2.0
