@@ -168,3 +168,8 @@ body.modal-open {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
+
+/* Disable custom cursor for modal and all its children */
+.modal-overlay, .modal-overlay * {
+  cursor: auto !important;
+}
