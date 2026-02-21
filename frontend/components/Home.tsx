@@ -100,8 +100,8 @@ export const Home: React.FC = () => {
                     } else if (scoresData) {
                         setFullAtsHistory(scoresData);
                         const formattedScores = scoresData.map((item: any) => ({
-                            date: new Date(item.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                            score: item.score
+                            timestamp: new Date(item.created_at).getTime(),
+                            score: Number(item.score) || 0
                         }));
                         setAtsHistory(formattedScores.slice(-15)); // Keep only latest 15 on graph ideally
                     }
@@ -375,7 +375,8 @@ export const Home: React.FC = () => {
     };
 
     const handleDownloadTranscript = (transcript: string, dateStr: string) => {
-        const blob = new Blob([transcript], { type: 'text/plain' });
+        const metadata = `\n\nAI-Interview conducted on https://resumifyng.vercel.app at ${new Date().toLocaleString('en-US')}\n`;
+        const blob = new Blob([transcript + metadata], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -384,6 +385,28 @@ export const Home: React.FC = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    };
+
+    // Delete handler for Authentic Resumes
+    const handleDeleteResume = async (fileName: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // prevent clicking the parent download trigger
+        if (!userId) return;
+
+        const toastId = toast.loading(`Deleting...`);
+        try {
+            const { data, error } = await supabase.storage.from('resumes').remove([`${userId}/${fileName}`]);
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                throw new Error("File not found or deletion blocked by Storage Policies (RLS). Please ensure you have enabled DELETE permissions for authenticated users on the 'resumes' bucket in Supabase.");
+            }
+
+            toast.success("Resume deleted!", { id: toastId });
+            // Add a small delay for Supabase to eventually consistent reflect the delete
+            setTimeout(() => fetchRecentResumes(userId), 500);
+
+        } catch (error: any) {
+            toast.error("Failed to delete resume: " + error.message, { id: toastId });
+        }
     };
 
     return (
@@ -613,21 +636,42 @@ export const Home: React.FC = () => {
                             <div className="flex-1 w-full relative z-10 pt-4 flex flex-col justify-center">
                                 {atsHistory.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%" minHeight={200}>
-                                        <AreaChart data={atsHistory} margin={{ top: 5, right: 0, left: -25, bottom: 0 }}>
+                                        <AreaChart data={atsHistory} margin={{ top: 15, right: 10, left: -25, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#4A70A9" stopOpacity={0.6} />
                                                     <stop offset="95%" stopColor="#4A70A9" stopOpacity={0} />
                                                 </linearGradient>
                                             </defs>
-                                            <XAxis dataKey="date" stroke="#475569" fontSize={11} tickLine={false} axisLine={false} />
-                                            <YAxis stroke="#475569" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
+                                            <XAxis dataKey="timestamp" stroke="#475569" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} />
+                                            <YAxis
+                                                stroke="#475569"
+                                                fontSize={11}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                domain={([dataMin, dataMax]) => [
+                                                    Math.max(0, Math.floor(dataMin - 10)),
+                                                    Math.min(100, Math.ceil(dataMax + 10))
+                                                ]}
+                                            />
                                             <Tooltip
                                                 contentStyle={{ backgroundColor: '#0A1120', border: '1px solid #4A70A9', borderRadius: '12px', fontSize: '13px' }}
                                                 itemStyle={{ color: '#EFECE3', fontWeight: 'bold' }}
                                                 labelStyle={{ color: '#8FABD4', marginBottom: '4px' }}
+                                                labelFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                formatter={(value: any) => [`${value}`, 'ATS Score']}
                                             />
-                                            <Area type="monotone" dataKey="score" stroke="#8FABD4" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="score"
+                                                name="ATS Score"
+                                                stroke="#8FABD4"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorScore)"
+                                                dot={{ r: 4, fill: '#8FABD4', strokeWidth: 0 }}
+                                                activeDot={{ r: 6, fill: '#EFECE3', stroke: '#4A70A9', strokeWidth: 2 }}
+                                            />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 ) : (
@@ -701,7 +745,7 @@ export const Home: React.FC = () => {
                                         </div>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-xl font-bold font-heading text-[#EFECE3]">
-                                                {atsHistory.length > 0 ? Math.round(atsHistory.reduce((acc, curr) => acc + curr.score, 0) / atsHistory.length) : 0}
+                                                {atsHistory.length > 0 ? Math.round(atsHistory.reduce((acc, curr) => acc + (Number(curr.score) || 0), 0) / atsHistory.length) : 0}
                                             </span>
                                             <span className="text-xs font-medium text-gray-500">/100</span>
                                         </div>
@@ -755,9 +799,18 @@ export const Home: React.FC = () => {
                                                         <span className="text-xs text-gray-500">{dateLabel}</span>
                                                     </div>
                                                 </div>
-                                                <button className="text-[#4A70A9] hover:text-[#8FABD4] opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-[#1a2333] rounded-lg">
-                                                    <UploadCloud className="w-4 h-4 rotate-180" />
-                                                </button>
+                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => handleDeleteResume(file.name, e)}
+                                                        className="text-rose-400 hover:text-rose-300 transition-colors p-2 bg-rose-500/10 hover:bg-rose-500/20 rounded-lg"
+                                                        title="Delete Resume"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                    <button className="text-[#4A70A9] hover:text-[#8FABD4] transition-colors p-2 bg-[#1a2333] hover:bg-[#334155] rounded-lg" title="Download Resume">
+                                                        <UploadCloud className="w-4 h-4 rotate-180" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         );
                                     })
