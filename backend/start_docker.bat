@@ -1,0 +1,3 @@
+@echo off
+echo Starting ResumifyNG in Docker...
+docker-compose up --build

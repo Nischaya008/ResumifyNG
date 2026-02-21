@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: .
+    container_name: resumify_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    restart: unless-stopped
