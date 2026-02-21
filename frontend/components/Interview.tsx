@@ -129,8 +129,8 @@ export const Interview: React.FC = () => {
         const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            // Force continuous streaming for longer dictation
-            recognition.continuous = true;
+            // Force continuous to false for better compatibility with Edge & Mobile devices, onend loop will handle keeping it alive.
+            recognition.continuous = false;
             recognition.interimResults = true;
             recognition.lang = 'en-US';
 
@@ -155,7 +155,9 @@ export const Interview: React.FC = () => {
             };
 
             recognition.onerror = (event: any) => {
-                console.warn('Speech recognition error:', event.error);
+                if (event.error !== 'no-speech') {
+                    console.warn('Speech recognition error:', event.error);
+                }
                 // Only explicitly kill the mic if the user denied permission
                 if (event.error === 'not-allowed') {
                     isListeningRef.current = false;
@@ -179,7 +181,7 @@ export const Interview: React.FC = () => {
                                 // Usually throws if already started somehow, safe to ignore
                             }
                         }
-                    }, 250);
+                    }, 100);
                 } else {
                     setIsListening(false);
                 }
@@ -393,7 +395,8 @@ export const Interview: React.FC = () => {
                 toast.success("Transcript downloaded!", { id: loadingToast });
             }
 
-            const blob = new Blob([transcriptText], { type: "text/plain" });
+            const metadata = `\n\nAI-Interview conducted on https://resumifyng.vercel.app at ${new Date().toLocaleString('en-US')}\n`;
+            const blob = new Blob([transcriptText + metadata], { type: "text/plain" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -501,159 +504,161 @@ export const Interview: React.FC = () => {
 
     // --- Normal View ---
     return (
-        <div className="relative w-full h-screen bg-[#334155] p-2 md:p-3 lg:p-4 flex flex-col overflow-hidden">
-            <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col overflow-hidden border border-[#334155]/50">
+        <div className="relative w-full h-[100dvh] bg-[#334155] flex flex-col overflow-hidden">
+            <div className="flex-1 w-full flex flex-col p-2 md:p-3 lg:p-4 py-8 sm:py-2 md:py-3 lg:py-4 transform scale-[0.92] sm:scale-100 origin-center">
+                <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col overflow-hidden border border-[#334155]/50">
 
-                {/* Header */}
-                <div className="bg-[#0A1120] border-b border-[#4A70A9]/20 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={handleExit}
-                            className="w-10 h-10 rounded-full bg-[#1a2333] flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#334155] transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4A70A9] to-[#8FABD4] p-[2px] shadow-[0_0_15px_rgba(74,112,169,0.3)]">
-                                <div className="w-full h-full bg-[#0A1120] rounded-full flex items-center justify-center">
-                                    <Bot className="w-5 h-5 text-[#8FABD4]" />
+                    {/* Header */}
+                    <div className="bg-[#0A1120] border-b border-[#4A70A9]/20 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={handleExit}
+                                className="w-10 h-10 rounded-full bg-[#1a2333] flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#334155] transition-colors"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4A70A9] to-[#8FABD4] p-[2px] shadow-[0_0_15px_rgba(74,112,169,0.3)]">
+                                    <div className="w-full h-full bg-[#0A1120] rounded-full flex items-center justify-center">
+                                        <Bot className="w-5 h-5 text-[#8FABD4]" />
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <h1 className="font-heading font-bold text-[#EFECE3] text-lg">AI Technical Interview</h1>
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    <span className="text-xs text-emerald-400">Agent Connected</span>
+                                <div>
+                                    <h1 className="font-heading font-bold text-[#EFECE3] text-lg">AI Technical Interview</h1>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span className="text-xs text-emerald-400">Agent Connected</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    {/* Speaker & Download Toggle Buttons */}
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleDownloadTranscript}
-                            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-[#4A70A9]/20 text-[#8FABD4] hover:bg-[#4A70A9]/30"
-                            title="Download Transcript"
-                        >
-                            <Download className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={toggleMute}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMuted
-                                ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                                : 'bg-[#4A70A9]/20 text-[#8FABD4] hover:bg-[#4A70A9]/30'
-                                }`}
-                        >
-                            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Chat Area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-gradient-to-b from-[#050B14] to-[#000000]">
-                    <div className="max-w-4xl mx-auto flex flex-col gap-6">
-
-                        {isInitializing && (
-                            <div className="flex justify-center items-center py-20 opacity-50">
-                                <Loader2 className="w-8 h-8 text-[#4A70A9] animate-spin" />
-                            </div>
-                        )}
-
-                        {messages.map((msg, index) => (
-                            <motion.div
-                                key={index}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
-                            >
-                                {/* Avatar */}
-                                <div className="shrink-0 pt-1">
-                                    {msg.role === 'user' ? (
-                                        <div className="w-8 h-8 rounded-full bg-[#334155] flex items-center justify-center shadow-md">
-                                            <User className="w-4 h-4 text-[#8FABD4]" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-8 h-8 rounded-full bg-[#4A70A9]/20 border border-[#4A70A9]/30 flex items-center justify-center shadow-md">
-                                            <Bot className="w-4 h-4 text-[#8FABD4]" />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Bubble */}
-                                <div className={`p-4 rounded-2xl shadow-sm leading-relaxed ${msg.role === 'user'
-                                    ? 'bg-[#4A70A9] text-white rounded-tr-sm'
-                                    : 'bg-[#0A1120] text-[#EFECE3] border border-[#4A70A9]/30 rounded-tl-sm shadow-[0_5px_15px_rgba(74,112,169,0.05)]'
-                                    }`}>
-                                    <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
-                                </div>
-                            </motion.div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-                </div>
-
-                {/* Input Area */}
-                <div className="p-4 md:p-6 bg-[#0A1120] border-t border-[#4A70A9]/20 shrink-0 z-10">
-                    <div className="max-w-4xl mx-auto flex gap-3">
-                        {isSttSupported && (
+                        {/* Speaker & Download Toggle Buttons */}
+                        <div className="flex items-center gap-2">
                             <button
-                                onClick={() => {
-                                    if (isListening) {
-                                        stopListening();
-                                    } else {
-                                        startListening();
-                                    }
-                                }}
-                                className={`w-12 shrink-0 rounded-xl transition-all shadow-md flex items-center justify-center ${isListening
-                                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
-                                    : 'bg-[#1a2333] hover:bg-[#334155] border border-[#334155]/50 text-gray-400 hover:text-white'
+                                onClick={handleDownloadTranscript}
+                                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors bg-[#4A70A9]/20 text-[#8FABD4] hover:bg-[#4A70A9]/30"
+                                title="Download Transcript"
+                            >
+                                <Download className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={toggleMute}
+                                className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isMuted
+                                    ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
+                                    : 'bg-[#4A70A9]/20 text-[#8FABD4] hover:bg-[#4A70A9]/30'
                                     }`}
                             >
-                                {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                             </button>
-                        )}
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            disabled={isLoading || isInitializing}
-                            value={inputValue + (interimText ? (inputValue ? ' ' : '') + interimText : '')}
-                            onChange={e => {
-                                setInputValue(e.target.value);
-                                setInterimText(''); // clear interim if user manually types
-                            }}
-                            onKeyDown={e => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSend();
-                                }
-                            }}
-                            placeholder={isLoading ? "Interviewer is typing..." : "Type or speak your response..."}
-                            className="flex-1 bg-[#1a2333] border border-[#334155]/50 focus:border-[#4A70A9] rounded-xl px-4 py-3 text-[#EFECE3] placeholder:text-gray-500 focus:outline-none transition-colors"
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={isLoading || !inputValue.trim() || isInitializing}
-                            className="w-12 shrink-0 bg-[#4A70A9] hover:bg-[#5C85C5] disabled:bg-[#334155] disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md flex items-center justify-center"
-                        >
-                            <Send className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={handleExit}
-                            className="w-12 md:w-auto md:px-4 shrink-0 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-                            title="Exit Interview"
-                        >
-                            <div className="hidden md:block text-sm font-semibold">Exit</div>
-                            <LogOut className="w-5 h-5" />
-                        </button>
+                        </div>
                     </div>
-                    {isSttSupported ? (
-                        <p className="text-center text-xs text-gray-500 mt-3 hidden md:block">Press <kbd className="font-mono bg-[#1a2333] px-1.5 py-0.5 rounded text-gray-400 mx-1">Enter</kbd> to send. Mic starts automatically.</p>
-                    ) : (
-                        <p className="text-center text-xs text-orange-500/80 mt-3 hidden md:block">Microphone features disabled on this browser.</p>
-                    )}
-                </div>
 
-            </main>
+                    {/* Chat Area */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-gradient-to-b from-[#050B14] to-[#000000]">
+                        <div className="max-w-4xl mx-auto flex flex-col gap-6">
+
+                            {isInitializing && (
+                                <div className="flex justify-center items-center py-20 opacity-50">
+                                    <Loader2 className="w-8 h-8 text-[#4A70A9] animate-spin" />
+                                </div>
+                            )}
+
+                            {messages.map((msg, index) => (
+                                <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`flex gap-4 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                                >
+                                    {/* Avatar */}
+                                    <div className="shrink-0 pt-1">
+                                        {msg.role === 'user' ? (
+                                            <div className="w-8 h-8 rounded-full bg-[#334155] flex items-center justify-center shadow-md">
+                                                <User className="w-4 h-4 text-[#8FABD4]" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-[#4A70A9]/20 border border-[#4A70A9]/30 flex items-center justify-center shadow-md">
+                                                <Bot className="w-4 h-4 text-[#8FABD4]" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Bubble */}
+                                    <div className={`p-4 rounded-2xl shadow-sm leading-relaxed ${msg.role === 'user'
+                                        ? 'bg-[#4A70A9] text-white rounded-tr-sm'
+                                        : 'bg-[#0A1120] text-[#EFECE3] border border-[#4A70A9]/30 rounded-tl-sm shadow-[0_5px_15px_rgba(74,112,169,0.05)]'
+                                        }`}>
+                                        <p className="whitespace-pre-wrap text-sm md:text-base">{msg.content}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-4 md:p-6 bg-[#0A1120] border-t border-[#4A70A9]/20 shrink-0 z-10">
+                        <div className="max-w-4xl mx-auto flex gap-3">
+                            {isSttSupported && (
+                                <button
+                                    onClick={() => {
+                                        if (isListening) {
+                                            stopListening();
+                                        } else {
+                                            startListening();
+                                        }
+                                    }}
+                                    className={`w-12 shrink-0 rounded-xl transition-all shadow-md flex items-center justify-center ${isListening
+                                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                                        : 'bg-[#1a2333] hover:bg-[#334155] border border-[#334155]/50 text-gray-400 hover:text-white'
+                                        }`}
+                                >
+                                    {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                                </button>
+                            )}
+                            <input
+                                ref={inputRef}
+                                type="text"
+                                disabled={isLoading || isInitializing}
+                                value={inputValue + (interimText ? (inputValue ? ' ' : '') + interimText : '')}
+                                onChange={e => {
+                                    setInputValue(e.target.value);
+                                    setInterimText(''); // clear interim if user manually types
+                                }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSend();
+                                    }
+                                }}
+                                placeholder={isLoading ? "Interviewer is typing..." : "Type or speak your response..."}
+                                className="flex-1 bg-[#1a2333] border border-[#334155]/50 focus:border-[#4A70A9] rounded-xl px-4 py-3 text-[#EFECE3] placeholder:text-gray-500 focus:outline-none transition-colors"
+                            />
+                            <button
+                                onClick={handleSend}
+                                disabled={isLoading || !inputValue.trim() || isInitializing}
+                                className="w-12 shrink-0 bg-[#4A70A9] hover:bg-[#5C85C5] disabled:bg-[#334155] disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md flex items-center justify-center"
+                            >
+                                <Send className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={handleExit}
+                                className="w-12 md:w-auto md:px-4 shrink-0 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                                title="Exit Interview"
+                            >
+                                <div className="hidden md:block text-sm font-semibold">Exit</div>
+                                <LogOut className="w-5 h-5" />
+                            </button>
+                        </div>
+                        {isSttSupported ? (
+                            <p className="text-center text-xs text-gray-500 mt-3 hidden md:block">Press <kbd className="font-mono bg-[#1a2333] px-1.5 py-0.5 rounded text-gray-400 mx-1">Enter</kbd> to send. Mic starts automatically.</p>
+                        ) : (
+                            <p className="text-center text-xs text-orange-500/80 mt-3 hidden md:block">Microphone features disabled on this browser.</p>
+                        )}
+                    </div>
+
+                </main>
+            </div>
         </div>
     );
 };
