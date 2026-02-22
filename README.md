@@ -1,44 +1,49 @@
 # ResumifyNG
 
-<!--
-================================================================================
-BANNER SECTION (SWITCHABLE – NO GIF)
-
-This uses pure HTML <details> + <summary> which is fully supported by GitHub.
-Users can switch between multiple images manually.
-All images are served via GitHub RAW links.
-================================================================================
--->
-
 <p align="center"><strong>ResumifyNG – Platform Preview</strong></p>
 
 <details open>
 <summary><strong>▸ Landing Page</strong></summary>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/<username>/<repo>/main/assets/banner-landing.png" width="100%" alt="Landing Page" />
-</p>
-</details>
-
-<details>
-<summary><strong>▸ ATS Resume Analysis</strong></summary>
-<p align="center">
-  <img src="https://raw.githubusercontent.com/<username>/<repo>/main/assets/banner-ats.png" width="100%" alt="ATS Analysis" />
-</p>
-</details>
-
-<details>
-<summary><strong>▸ AI Technical Interview</strong></summary>
-<p align="center">
-  <img src="https://raw.githubusercontent.com/<username>/<repo>/main/assets/banner-interview.png" width="100%" alt="AI Interview" />
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(1).png?raw=true" width="100%" alt="Landing Page" />
 </p>
 </details>
 
 <details>
 <summary><strong>▸ Insights Dashboard</strong></summary>
 <p align="center">
-  <img src="https://raw.githubusercontent.com/<username>/<repo>/main/assets/banner-dashboard.png" width="100%" alt="Dashboard" />
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(2).png?raw=true" width="100%" alt="Dashboard" />
 </p>
 </details>
+
+<details>
+<summary><strong>▸ ATS Resume Analysis</strong></summary>
+<p align="center">
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(3).png?raw=true" width="100%" alt="ATS Analysis" />
+</p>
+</details>
+
+<details>
+<summary><strong>▸ Profile Hub</strong></summary>
+<p align="center">
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(6).png?raw=true" width="100%" alt="Dashboard" />
+</p>
+</details>
+
+<details>
+<summary><strong>▸ AI Technical Interview</strong></summary>
+<p align="center">
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(4).png?raw=true" width="100%" alt="AI Interview" />
+</p>
+</details>
+
+<details>
+<summary><strong>▸ Membership Plans</strong></summary>
+<p align="center">
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Web_View%20(5).png?raw=true" width="100%" alt="Dashboard" />
+</p>
+</details>
+
 
 <p align="center">
   <strong>AI‑powered resume optimization and technical interview simulation platform</strong><br/>
@@ -95,7 +100,7 @@ This project is designed to be:
 ## System Architecture
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/<username>/<repo>/main/assets/architecture-flowchart.png" alt="System Flowchart" width="90%" />
+  <img src="https://github.com/Nischaya008/ResumifyNG/blob/main/assets/Flowchart%20(2).png?raw=true" alt="System Flowchart" width="90%" />
 </p>
 
 ### High‑Level Flow
