@@ -8,15 +8,15 @@ from huggingface_hub import AsyncInferenceClient
 logger = logging.getLogger("backend")
 
 SCORING_WEIGHTS = {
-    "skill_match": 0.40,
-    "experience_relevance": 0.25,
+    "skill_match": 0.55,
+    "experience_relevance": 0.15,
     "role_alignment": 0.15,
-    "education_match": 0.10,
+    "education_match": 0.05,
     "recency_continuity": 0.10
 }
 
-MISSING_SKILL_PENALTY = 7        # per mandatory skill
-JOB_TITLE_MISMATCH_PENALTY = 15
+MISSING_SKILL_PENALTY = 3        # per mandatory skill
+JOB_TITLE_MISMATCH_PENALTY = 7
 
 class ATSService:
     _instance = None
@@ -143,20 +143,23 @@ Applicant Resume:
 
             # --- NUMERICAL SCORING OVERRIDE ---
             
-            # 1. Normalize breakdown
             breakdown = score_data.get("breakdown", {})
+            raw_role_alignment = float(breakdown.get("role_alignment", 0))
+            
+            # 1. Normalize breakdown
             for k in SCORING_WEIGHTS:
-                breakdown[k] = float(breakdown.get(k, 0))
-                breakdown[k] = max(0, min(100, breakdown[k]))
+                raw_val = float(breakdown.get(k, 0))
+                breakdown[k] = 60 + (raw_val * 0.4)
                 
             # 2. Recompute skill score based on ground truth jd_skills
             total_required = len(jd_skills) or 1
             matched_count = len(set(score_data["matched_skills"]) & jd_skills)
             missing_count = len(jd_skills - set(score_data["matched_skills"]))
             
-            skill_match_score = (matched_count / total_required) * 100
-            skill_penalty = missing_count * MISSING_SKILL_PENALTY
-            skill_match_score = max(0, skill_match_score - skill_penalty)
+            raw_ratio = matched_count / total_required
+            skill_match_score = 40 + (raw_ratio * 60)
+            skill_penalty = min(20, missing_count * MISSING_SKILL_PENALTY)
+            skill_match_score = max(35, skill_match_score - skill_penalty)
             
             breakdown["skill_match"] = skill_match_score
             score_data["breakdown"] = breakdown
@@ -166,8 +169,11 @@ Applicant Resume:
             resume_title_str = resume_data.get("job_title", "").lower()
             
             title_penalty = 0
-            if jd_title_str and resume_title_str and jd_title_str not in resume_title_str:
-                title_penalty = JOB_TITLE_MISMATCH_PENALTY
+            if jd_title_str and resume_title_str:
+                if jd_title_str not in resume_title_str:
+                    title_penalty = JOB_TITLE_MISMATCH_PENALTY
+            if len(resume_title_str) < 3:
+                title_penalty = 0
                 
             # 4. Compute Final Score
             final_score = 0
@@ -176,9 +182,13 @@ Applicant Resume:
                 
             final_score -= title_penalty
             
-            # 5. Realistic bands cap
-            if final_score > 85 and missing_count > 0:
-                final_score = 78.0
+            # 5. Realistic bands cap & Garbage detection
+            if matched_count == 0 and raw_role_alignment < 30:
+                score_data["ats_score"] = round(max(0, final_score - 30), 1)
+                return score_data
+
+            if final_score > 90:
+                final_score = 90 + (final_score - 90) * 0.3
                 
             final_score = round(max(0, min(100, final_score)), 1)
             score_data["ats_score"] = final_score
