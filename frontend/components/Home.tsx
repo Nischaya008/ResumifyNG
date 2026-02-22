@@ -297,9 +297,19 @@ export const Home: React.FC = () => {
 
             const data = await res.json();
 
-            // 4. Store parsed_resume in localStorage, discarding ats_analysis for storage
-            const dataToStore = { parsed_resume: data.parsed_resume };
-            localStorage.setItem('parsed_resume', JSON.stringify(dataToStore));
+            // 4. Store parsed_resume and jdText in localStorage with timestamp for 10-day caching
+            const stamp = new Date().getTime();
+            const resumeDataToStore = {
+                parsed_resume: data.parsed_resume,
+                timestamp: stamp
+            };
+            localStorage.setItem('parsed_resume_cache', JSON.stringify(resumeDataToStore));
+
+            const jdDataToStore = {
+                text: jdText,
+                timestamp: stamp
+            };
+            localStorage.setItem('jdText_cache', JSON.stringify(jdDataToStore));
 
             const newScore = Math.round(data.ats_analysis.ats_score);
             const jobTitle = data.ats_analysis.job_title || "Unknown Target";
@@ -385,6 +395,67 @@ export const Home: React.FC = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    };
+
+    const handleUseLatestResume = async () => {
+        if (pastResumes.length === 0) return;
+        const latestResume = pastResumes[0];
+        const toastId = toast.loading("Fetching latest resume...");
+        try {
+            const { data, error } = await supabase.storage.from('resumes').download(`${userId}/${latestResume.name}`);
+            if (error) throw error;
+
+            const cleanName = latestResume.name.split('_').slice(1).join('_') || latestResume.name;
+            const file = new File([data], cleanName, { type: data.type });
+            setSelectedFile(file);
+            toast.dismiss(toastId);
+            setJdText("");
+            setIsJdModalOpen(true);
+        } catch (error: any) {
+            toast.error("Failed to fetch latest resume: " + error.message, { id: toastId });
+        }
+    };
+
+    const handleDeleteAllInterviews = async () => {
+        if (!userId || interviewsData.length === 0) return;
+        const toastId = toast.loading("Deleting all transcripts...");
+        try {
+            const { error } = await supabase.from('interviews').delete().eq('user_id', userId);
+            if (error) throw error;
+            setInterviewsData([]);
+            toast.success("All transcripts deleted!", { id: toastId });
+        } catch (error: any) {
+            toast.error("Failed to delete transcripts: " + error.message, { id: toastId });
+        }
+    };
+
+    const hasValidCachedJD = () => {
+        const cached = localStorage.getItem('jdText_cache');
+        if (!cached) return false;
+        try {
+            const parsed = JSON.parse(cached);
+            return (new Date().getTime() - parsed.timestamp) <= 864000000;
+        } catch (e) {
+            return false;
+        }
+    };
+
+    const handleUseLastJD = () => {
+        const cached = localStorage.getItem('jdText_cache');
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if ((new Date().getTime() - parsed.timestamp) <= 864000000) {
+                    setJdText(parsed.text);
+                    toast.success("Loaded last used Job Description.");
+                } else {
+                    toast.error("Cached JD has expired.");
+                    localStorage.removeItem('jdText_cache');
+                }
+            } catch (e) {
+                toast.error("Failed to load cached JD.");
+            }
+        }
     };
 
     // Delete handler for Authentic Resumes
@@ -773,7 +844,14 @@ export const Home: React.FC = () => {
 
                         {/* div5: Past Resumes (Takes 6 columns) */}
                         <div className="lg:col-span-6 bg-[#0A1120] border border-[#4A70A9]/30 rounded-3xl p-6 flex flex-col gap-4 shadow-[0_0_30px_rgba(74,112,169,0.1)] transition-all hover:border-[#4A70A9]/60 min-h-[300px] max-h-[400px]">
-                            <h2 className="text-xl font-heading font-semibold text-[#EFECE3]">Past Resumes</h2>
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-heading font-semibold text-[#EFECE3]">Past Resumes</h2>
+                                {pastResumes.length > 0 && (
+                                    <button onClick={handleUseLatestResume} className="text-xs bg-[#4A70A9]/20 hover:bg-[#4A70A9]/40 text-[#8FABD4] px-3 py-1.5 rounded-lg border border-[#4A70A9]/50 transition-colors flex items-center gap-1.5">
+                                        <UploadCloud className="w-3.5 h-3.5" /> Use Latest
+                                    </button>
+                                )}
+                            </div>
                             <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2">
                                 {pastResumes.length > 0 ? (
                                     pastResumes.map((file, i) => {
@@ -825,7 +903,15 @@ export const Home: React.FC = () => {
 
                         {/* div6: Past Interviews (Takes 6 columns) */}
                         <div className="lg:col-span-6 bg-[#0A1120] border border-[#4A70A9]/30 rounded-3xl p-6 flex flex-col gap-4 shadow-[0_0_30px_rgba(74,112,169,0.1)] transition-all hover:border-[#4A70A9]/60 min-h-[300px] max-h-[400px]">
-                            <h2 className="text-xl font-heading font-semibold text-[#EFECE3]">Interviews</h2>
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-xl font-heading font-semibold text-[#EFECE3]">Interviews</h2>
+                                {interviewsData.length > 0 && (
+                                    <button onClick={handleDeleteAllInterviews} className="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-3 py-1.5 rounded-lg border border-rose-500/30 transition-colors flex items-center gap-1.5">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        Delete All
+                                    </button>
+                                )}
+                            </div>
                             <div className="flex-1 flex flex-col gap-3 overflow-y-auto custom-scrollbar pr-2">
                                 {interviewsData.length > 0 ? (
                                     interviewsData.map((interview, i) => {
@@ -1042,9 +1128,16 @@ export const Home: React.FC = () => {
                                     <h2 className="text-2xl font-heading font-bold text-[#EFECE3]">Job Description</h2>
                                     <p className="text-gray-400 text-sm mt-1">Paste the JD to check your ATS compatibility</p>
                                 </div>
-                                <button onClick={() => setIsJdModalOpen(false)} className="text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#1a2333]">
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
+                                <div className="flex items-center gap-3">
+                                    {hasValidCachedJD() && (
+                                        <button onClick={handleUseLastJD} className="text-xs bg-[#4A70A9]/20 hover:bg-[#4A70A9]/30 text-[#8FABD4] px-3 py-2 rounded-lg border border-[#4A70A9]/50 transition-colors flex items-center gap-1.5 shadow-sm">
+                                            <FileText className="w-3.5 h-3.5" /> Use Last JD
+                                        </button>
+                                    )}
+                                    <button onClick={() => setIsJdModalOpen(false)} className="text-gray-500 hover:text-white transition-colors p-2 flex items-center justify-center rounded-lg hover:bg-[#1a2333]">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
                             </div>
 
                             <textarea
@@ -1108,6 +1201,14 @@ export const Home: React.FC = () => {
 
                             {/* Modal Content - Scrollable area */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+
+                                {/* Disclaimer */}
+                                <div className="bg-[#4A70A9]/10 border border-[#4A70A9]/30 rounded-xl p-4 flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-[#8FABD4] flex-shrink-0 mt-0.5" />
+                                    <p className="text-sm text-[#EFECE3]/80 leading-relaxed">
+                                        <span className="font-semibold text-[#8FABD4]">Note:</span> This ATS calculation is an estimation based on standard industry practices. Actual scoring algorithms vary significantly across different companies and specific ATS providers.
+                                    </p>
+                                </div>
 
                                 {/* Top Stats Row */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1222,7 +1323,6 @@ export const Home: React.FC = () => {
                                 <div className="flex justify-end gap-4 pt-4 border-t border-[#334155]/30">
                                     <button
                                         onClick={() => {
-                                            localStorage.setItem('jdText', jdText);
                                             checkBrowserSupportAndRedirect();
                                         }}
                                         className="bg-[#050B14] border border-[#4A70A9]/50 hover:bg-[#1a2333] text-[#8FABD4] hover:text-white px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-sm flex items-center gap-2"
