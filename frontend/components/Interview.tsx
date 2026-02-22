@@ -37,6 +37,8 @@ export const Interview: React.FC = () => {
         checkAuth();
     }, []);
 
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     // Voice / Web Speech API State & Refs
     const [isMuted, setIsMuted] = useState(false);
     const isMutedRef = useRef(false);
@@ -83,7 +85,9 @@ export const Interview: React.FC = () => {
 
     const playTTS = (text: string) => {
         if (isMutedRef.current) {
-            startListening();
+            if (!isMobileDevice) {
+                startListening();
+            }
             return;
         }
 
@@ -102,7 +106,9 @@ export const Interview: React.FC = () => {
         utterance.rate = 1.1;
 
         utterance.onend = () => {
-            startListening();
+            if (!isMobileDevice) {
+                startListening();
+            }
         };
 
         const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/[#*_~]/g, '');
@@ -172,6 +178,11 @@ export const Interview: React.FC = () => {
             recognition.onend = () => {
                 // Keep the mic alive if the user hasn't explicitly stopped it
                 if (isListeningRef.current) {
+                    if (isMobileDevice) {
+                        isListeningRef.current = false;
+                        setIsListening(false);
+                        return;
+                    }
                     // Slight delay to prevent aggressive browser rate-limit blocking
                     setTimeout(() => {
                         if (isListeningRef.current) {
@@ -213,29 +224,48 @@ export const Interview: React.FC = () => {
             }
 
             // 1. Check local storage for parsed resume and JD
-            const storedResume = localStorage.getItem('parsed_resume');
-            const storedJd = localStorage.getItem('jdText');
+            const storedResumeStr = localStorage.getItem('parsed_resume_cache');
+            const storedJdStr = localStorage.getItem('jdText_cache');
 
-            if (!storedResume || !storedJd) {
+            let isValidCache = false;
+
+            if (storedResumeStr && storedJdStr) {
+                try {
+                    const storedResumeObj = JSON.parse(storedResumeStr);
+                    const storedJdObj = JSON.parse(storedJdStr);
+
+                    const now = new Date().getTime();
+                    const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+
+                    if (
+                        storedResumeObj.timestamp && (now - storedResumeObj.timestamp) < TEN_DAYS_MS &&
+                        storedJdObj.timestamp && (now - storedJdObj.timestamp) < TEN_DAYS_MS
+                    ) {
+                        parsedResumeRef.current = storedResumeObj.parsed_resume;
+                        jdTextRef.current = storedJdObj.text;
+                        isValidCache = true;
+                    } else {
+                        // Clear expired cache
+                        localStorage.removeItem('parsed_resume_cache');
+                        localStorage.removeItem('jdText_cache');
+                    }
+                } catch (e) {
+                    console.error("Invalid data format in cache:", e);
+                    localStorage.removeItem('parsed_resume_cache');
+                    localStorage.removeItem('jdText_cache');
+                }
+            }
+
+            if (!isValidCache) {
                 setErrorState("Missing data");
                 setIsInitializing(false);
                 return;
             }
 
-            try {
-                parsedResumeRef.current = JSON.parse(storedResume).parsed_resume;
-                jdTextRef.current = storedJd;
-
-                // Kick off the very first message silently, guarding against double-calls
-                if (!hasInitialized.current) {
-                    hasInitialized.current = true;
-                    startInterview();
-                }
-
-            } catch (e) {
-                console.error(e);
-                setErrorState("Invalid data format");
-                setIsInitializing(false);
+            // Valid cache, start interview silently guarding against double-calls
+            if (!hasInitialized.current) {
+                hasInitialized.current = true;
+                startInterview();
             }
         };
 
@@ -395,7 +425,7 @@ export const Interview: React.FC = () => {
                 toast.success("Transcript downloaded!", { id: loadingToast });
             }
 
-            const metadata = `\n\nAI-Interview conducted on https://resumifyng.vercel.app at ${new Date().toLocaleString('en-US')}\n`;
+            const metadata = `\n=======================\n\nAI-Interview conducted on https://resumifyng.vercel.app at ${new Date().toLocaleString('en-US')}\n`;
             const blob = new Blob([transcriptText + metadata], { type: "text/plain" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -504,9 +534,9 @@ export const Interview: React.FC = () => {
 
     // --- Normal View ---
     return (
-        <div className="relative w-full h-[100dvh] bg-[#334155] flex flex-col overflow-hidden">
-            <div className="flex-1 w-full flex flex-col p-2 md:p-3 lg:p-4 py-8 sm:py-2 md:py-3 lg:py-4 transform scale-[0.92] sm:scale-100 origin-center">
-                <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col overflow-hidden border border-[#334155]/50">
+        <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] bg-[#334155] flex flex-col lg:overflow-hidden">
+            <div className="flex-1 w-full flex flex-col p-2 md:p-3 lg:p-4 py-12 sm:py-2 md:py-3 lg:py-4 transform scale-[0.95] lg:scale-100 origin-top lg:origin-center lg:pt-4">
+                <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col lg:overflow-hidden border border-[#334155]/50 min-h-[85vh] lg:min-h-0">
 
                     {/* Header */}
                     <div className="bg-[#0A1120] border-b border-[#4A70A9]/20 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
