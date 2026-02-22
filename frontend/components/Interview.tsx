@@ -416,6 +416,16 @@ export const Interview: React.FC = () => {
                         toast.error("Failed to save to database, but download will proceed.", { id: loadingToast });
                     } else {
                         setHasSavedTranscript(true);
+
+                        // Increment lifetime metrics
+                        const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
+                        if (profile) {
+                            await supabase.from('profiles').update({
+                                lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
+                                lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
+                            }).eq('id', user.id);
+                        }
+
                         toast.success("Transcript saved and downloaded!", { id: loadingToast });
                     }
                 } else {
@@ -458,11 +468,21 @@ export const Interview: React.FC = () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
-                    await supabase.from('interviews').insert({
+                    const { error } = await supabase.from('interviews').insert({
                         user_id: user.id,
                         transcript: transcriptText,
                         questions_count: questionsCount
                     });
+
+                    if (!error) {
+                        const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
+                        if (profile) {
+                            await supabase.from('profiles').update({
+                                lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
+                                lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
+                            }).eq('id', user.id);
+                        }
+                    }
                 }
                 toast.success("Transcript saved!", { id: loadingToast });
             } catch (error) {
@@ -534,9 +554,9 @@ export const Interview: React.FC = () => {
 
     // --- Normal View ---
     return (
-        <div className="relative w-full min-h-[100dvh] lg:h-[100dvh] bg-[#334155] flex flex-col lg:overflow-hidden">
-            <div className="flex-1 w-full flex flex-col p-2 md:p-3 lg:p-4 py-12 sm:py-2 md:py-3 lg:py-4 transform scale-[0.95] lg:scale-100 origin-top lg:origin-center lg:pt-4">
-                <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col lg:overflow-hidden border border-[#334155]/50 min-h-[85vh] lg:min-h-0">
+        <div className="relative w-full h-[100dvh] bg-[#334155] flex flex-col overflow-hidden">
+            <div className="flex-1 w-full flex flex-col p-2 md:p-3 lg:p-4 py-12 sm:py-2 md:py-3 lg:py-4 transform scale-[0.95] lg:scale-100 origin-top lg:origin-center lg:pt-4 min-h-0">
+                <main className="flex-1 bg-[#000000] rounded-[2rem] md:rounded-[2.5rem] relative shadow-2xl ring-1 ring-[#475569] flex flex-col overflow-hidden border border-[#334155]/50 min-h-0">
 
                     {/* Header */}
                     <div className="bg-[#0A1120] border-b border-[#4A70A9]/20 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm z-10">
