@@ -49,6 +49,11 @@ export const Home: React.FC = () => {
     const [interviewsData, setInterviewsData] = useState<any[]>([]);
     const [accountSinceDays, setAccountSinceDays] = useState<number | null>(null);
 
+    // Lifetime Metrics State
+    const [lifetimeResumes, setLifetimeResumes] = useState(0);
+    const [lifetimeInterviews, setLifetimeInterviews] = useState(0);
+    const [lifetimeQuestions, setLifetimeQuestions] = useState(0);
+
     useEffect(() => {
         if (sessionStorage.getItem('justSubscribed') === 'true') {
             setIsWelcomeModalOpen(true);
@@ -119,15 +124,18 @@ export const Home: React.FC = () => {
                         setInterviewsData(interviews);
                     }
 
-                    // Fetch Profile Membership
+                    // Fetch Profile Membership and Lifetime Metrics
                     const { data: profile } = await supabase
                         .from('profiles')
-                        .select('membership_tier, membership_expiry')
+                        .select('membership_tier, membership_expiry, lifetime_resumes, lifetime_interviews, lifetime_questions')
                         .eq('id', user.id)
                         .single();
                     if (profile) {
                         setMembershipTier(profile.membership_tier);
                         setMembershipExpiry(profile.membership_expiry);
+                        setLifetimeResumes(profile.lifetime_resumes || 0);
+                        setLifetimeInterviews(profile.lifetime_interviews || 0);
+                        setLifetimeQuestions(profile.lifetime_questions || 0);
                     }
 
                 } catch (err) {
@@ -328,6 +336,13 @@ export const Home: React.FC = () => {
                 if (insertError) {
                     console.error("Failed to save ATS Score to database:", insertError.message);
                     // Decide not to hard crash here, just log warning
+                } else {
+                    // Update lifetime resumes
+                    setLifetimeResumes(prev => {
+                        const newCount = prev + 1;
+                        supabase.from('profiles').update({ lifetime_resumes: newCount }).eq('id', userId).then();
+                        return newCount;
+                    });
                 }
 
                 // 6. Update local graph data instantly
@@ -780,14 +795,14 @@ export const Home: React.FC = () => {
                                 <span className="text-xs font-medium px-2 py-1 rounded bg-[#4A70A9]/20 text-[#8FABD4]">Overview</span>
                             </div>
 
-                            {atsHistory.length > 0 || pastResumes.length > 0 ? (
+                            {atsHistory.length > 0 || pastResumes.length > 0 || lifetimeResumes > 0 || lifetimeInterviews > 0 ? (
                                 <div className="flex-1 grid grid-cols-2 gap-3">
                                     {/* AI Interviews */}
                                     <div className="bg-[#050B14] rounded-2xl p-3 border border-[#334155]/50 flex flex-col justify-center items-center text-center hover:border-[#4A70A9]/40 transition-colors">
                                         <div className="w-8 h-8 rounded-full bg-[#1a2333] flex items-center justify-center text-[#8FABD4] mb-2">
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                                         </div>
-                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{interviewsData.length}</span>
+                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{lifetimeInterviews}</span>
                                         <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Interviews</span>
                                     </div>
 
@@ -796,7 +811,7 @@ export const Home: React.FC = () => {
                                         <div className="w-8 h-8 rounded-full bg-[#1a2333] flex items-center justify-center text-[#4A70A9] mb-2">
                                             <FileText className="w-4 h-4" />
                                         </div>
-                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{pastResumes.length > 0 ? pastResumes.length : 0}</span>
+                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{lifetimeResumes}</span>
                                         <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Resumes</span>
                                     </div>
 
@@ -805,7 +820,7 @@ export const Home: React.FC = () => {
                                         <div className="w-8 h-8 rounded-full bg-[#1a2333] flex items-center justify-center text-emerald-500 mb-2">
                                             <CheckCircle2 className="w-4 h-4" />
                                         </div>
-                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{interviewsData.reduce((acc, curr) => acc + (curr.questions_count || 0), 0)}</span>
+                                        <span className="text-xl font-bold font-heading text-[#EFECE3]">{lifetimeQuestions}</span>
                                         <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Questions Answered</span>
                                     </div>
 
@@ -816,7 +831,7 @@ export const Home: React.FC = () => {
                                         </div>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-xl font-bold font-heading text-[#EFECE3]">
-                                                {atsHistory.length > 0 ? Math.round(atsHistory.reduce((acc, curr) => acc + (Number(curr.score) || 0), 0) / atsHistory.length) : 0}
+                                                {fullAtsHistory.length > 0 ? Math.round(fullAtsHistory.reduce((acc, curr) => acc + (Number(curr.score) || 0), 0) / fullAtsHistory.length) : 0}
                                             </span>
                                             <span className="text-xs font-medium text-gray-500">/100</span>
                                         </div>
