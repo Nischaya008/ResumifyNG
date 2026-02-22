@@ -1,5 +1,5 @@
 # ResumifyNG
-
+> “What cannot be measured cannot be improved.”
 <p align="center"><strong>ResumifyNG – Platform Preview</strong></p>
 
 <details open>
@@ -56,7 +56,7 @@
 
 **ResumifyNG** is a full‑stack, production‑grade career preparation platform that helps candidates **optimize resumes for Applicant Tracking Systems (ATS)** and **practice real technical interviews** with an autonomous AI Hiring Manager.
 
-Unlike keyword scanners or scripted mock tools, ResumifyNG models how **real ATS pipelines and hiring managers actually behave**—combining deterministic scoring logic with large‑language‑model reasoning and ultra‑low‑latency conversational AI.
+Unlike keyword scanners or scripted mock tools, ResumifyNG models how **real ATS pipelines and hiring managers actually behave**, combining deterministic scoring logic with large‑language‑model reasoning and ultra‑low‑latency conversational AI.
 
 This project is designed to be:
 
@@ -246,10 +246,15 @@ uvicorn main:app --reload
 
 ## License
 
-MIT License
+**This project is proprietary and strictly confidential. Unauthorized use, reproduction, distribution, or modification is strictly prohibited and will result in legal action. All rights reserved. See the [LICENSE](https://github.com/Nischaya008/ResumifyNG/blob/main/LICENSE) for details.**
 
 ---
 
-## Author
+## Contact
+For any inquiries or feedback, reach out via:
+- Email: nischayagarg008@gmail.com
+- Twitter: [@Nischaya008](https://x.com/Nischaya008)
+- LinkedIn: [Nischaya Garg](https://www.linkedin.com/in/nischaya008/)
 
-Built as a full‑stack AI systems project focused on **real‑world engineering rigor**, **explainability**, and **deployment‑ready architecture**.
+Stay Innovated, Keep Coding, Think BIG!
+> “Preparation reveals the truth before the test does.”
