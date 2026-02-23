@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, User, FileText, UploadCloud, FileEdit, CheckCircle2, AlertCircle, TrendingUp, TrendingDown, Target, Loader2, Play, Download, Bot } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -48,6 +48,9 @@ export const Home: React.FC = () => {
     // Interviews State
     const [interviewsData, setInterviewsData] = useState<any[]>([]);
     const [accountSinceDays, setAccountSinceDays] = useState<number | null>(null);
+
+    // Ref for clearing graph refresh timeout on unmount
+    const graphRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Lifetime Metrics State
     const [lifetimeResumes, setLifetimeResumes] = useState(0);
@@ -147,6 +150,47 @@ export const Home: React.FC = () => {
             }
         };
         fetchUserAndFiles();
+    }, []);
+
+    // Refetch ATS graph data (soft reload without full page refresh)
+    const fetchAtsHistory = useCallback(async () => {
+        if (!userId) return;
+        try {
+            const { data: scoresData, error: scoresError } = await supabase
+                .from('ats_scores')
+                .select('score, job_title, analysis_details, created_at')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: true });
+            if (scoresError) {
+                console.error("Error refetching ATS scores:", scoresError);
+            } else if (scoresData) {
+                setFullAtsHistory(scoresData);
+                const formattedScores = scoresData.map((item: any) => ({
+                    timestamp: new Date(item.created_at).getTime(),
+                    score: Number(item.score) || 0
+                }));
+                setAtsHistory(formattedScores.slice(-15));
+            }
+        } catch (err) {
+            console.error("Unexpected error refetching ATS history:", err);
+        }
+    }, [userId]);
+
+    // Close ATS report modal and schedule graph soft-reload after 2 seconds
+    const handleCloseResultModal = useCallback(() => {
+        setIsResultModalOpen(false);
+        if (graphRefreshTimeoutRef.current) clearTimeout(graphRefreshTimeoutRef.current);
+        graphRefreshTimeoutRef.current = setTimeout(() => {
+            fetchAtsHistory();
+            graphRefreshTimeoutRef.current = null;
+        }, 2000);
+    }, [fetchAtsHistory]);
+
+    // Clear graph refresh timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (graphRefreshTimeoutRef.current) clearTimeout(graphRefreshTimeoutRef.current);
+        };
     }, []);
 
     // Also refetch resumes after a specific successful analysis Upload
@@ -1189,7 +1233,7 @@ export const Home: React.FC = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 z-[60] flex items-center justify-center bg-[#000000]/60 backdrop-blur-md pointer-events-auto p-4 md:p-8"
-                        onClick={() => setIsResultModalOpen(false)}
+                        onClick={handleCloseResultModal}
                     >
                         <motion.div
                             initial={{ scale: 0.95, y: 20 }}
@@ -1209,7 +1253,7 @@ export const Home: React.FC = () => {
                                         <p className="text-gray-400 text-sm">Targeted ATS Breakdown</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsResultModalOpen(false)} className="text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#1a2333]">
+                                <button onClick={handleCloseResultModal} className="text-gray-500 hover:text-white transition-colors p-2 rounded-lg hover:bg-[#1a2333]">
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
@@ -1345,7 +1389,7 @@ export const Home: React.FC = () => {
                                         <Target className="w-4 h-4" /> Conduct an AI Interview
                                     </button>
                                     <button
-                                        onClick={() => setIsResultModalOpen(false)}
+                                        onClick={handleCloseResultModal}
                                         className="bg-[#4A70A9] hover:bg-[#5C85C5] text-white px-8 py-3 rounded-xl font-semibold text-sm transition-all shadow-md hover:shadow-lg"
                                     >
                                         Done
