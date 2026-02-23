@@ -256,15 +256,9 @@ def parse_jd_structured(jd_text: str) -> Dict[str, Any]:
             skill_sections.append(m.group(0))
     required_section = "\n".join(skill_sections)
 
-    # No skill-bearing sections detected → do NOT parse entire JD as skills
+    # No skill-bearing sections detected -> fallback to parsing entire JD
     if not required_section.strip():
-        return {
-            "required_or_groups": [],
-            "required_standalone": set(),
-            "optional": set(),
-            "all_required_canonical": set(),
-            "all_optional_canonical": set(),
-        }
+        required_section = lower
 
     optional_section = ""
 
