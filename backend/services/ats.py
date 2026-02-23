@@ -157,7 +157,10 @@ Applicant Resume:
             all_required = jd_structured.get("all_required_canonical", set())
 
             if not all_required:
-                logger.warning("JD parsing produced zero required skills. Proceeding with nominal skill score.")
+                raise RuntimeError(
+                    "JD parsing produced zero required skills. "
+                    "Refusing to score to avoid garbage ATS output."
+                )
 
             logger.info("REQUIRED SKILLS USED FOR SCORING: %s", sorted(all_required))
             logger.info("FINAL REQUIRED CANONICAL: %s", sorted(jd_structured.get("all_required_canonical", set())))
@@ -197,10 +200,6 @@ Applicant Resume:
             skill_match_score = 40 + (raw_ratio * 60)
             missing_requirements = total_required - matched_required
             skill_penalty = min(20, missing_requirements * MISSING_SKILL_PENALTY)
-            if not all_required:
-                skill_match_score = 40
-                missing_requirements = 0
-                skill_penalty = 0
             skill_match_score = max(15, skill_match_score - skill_penalty)  # Fix #3: floor 15 for spread
 
             # Fix #5: Depth bonus – reward more matched skills (domain-agnostic)
