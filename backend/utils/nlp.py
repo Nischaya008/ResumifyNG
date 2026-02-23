@@ -3,9 +3,19 @@ from typing import List, Set
 
 def normalize_skills(skills: List[str]) -> List[str]:
     """
-    Deprecated: No longer required as skill extraction is dynamic.
+    Normalizes and deduplicates skills from the parser output.
+    Preserves skills for downstream ATS matching (case-insensitive dedup).
     """
-    return []
+    if not skills:
+        return []
+    seen: Set[str] = set()
+    result: List[str] = []
+    for s in (str(s).strip() for s in skills if s):
+        lower = s.lower()
+        if lower and lower not in seen:
+            seen.add(lower)
+            result.append(s.strip())
+    return result
 
 def extract_jd_skills(jd_text: str) -> List[str]:
     """
