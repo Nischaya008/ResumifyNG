@@ -381,12 +381,25 @@ export const Home: React.FC = () => {
                     console.error("Failed to save ATS Score to database:", insertError.message);
                     // Decide not to hard crash here, just log warning
                 } else {
-                    // Update lifetime resumes
-                    setLifetimeResumes(prev => {
-                        const newCount = prev + 1;
-                        supabase.from('profiles').update({ lifetime_resumes: newCount }).eq('id', userId).then();
-                        return newCount;
-                    });
+                    // Update lifetime resumes via backend API (bypasses RLS) or fallback to direct Supabase
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const token = session?.access_token;
+                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                    const res = token ? await fetch(`${apiUrl}/api/profile/increment-metrics`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ resumes: 1, interviews: 0, questions: 0 }),
+                    }) : null;
+                    if (res?.ok) {
+                        setLifetimeResumes(prev => prev + 1);
+                    } else {
+                        // Fallback: direct Supabase update
+                        const { data: profile } = await supabase.from('profiles').select('lifetime_resumes').eq('id', userId).single();
+                        const newCount = (profile?.lifetime_resumes ?? 0) + 1;
+                        const { error: profileError } = await supabase.from('profiles').update({ lifetime_resumes: newCount }).eq('id', userId);
+                        if (!profileError) setLifetimeResumes(newCount);
+                        else console.error("Failed to update lifetime_resumes:", profileError.message);
+                    }
                 }
 
                 // 6. Update local graph data instantly
