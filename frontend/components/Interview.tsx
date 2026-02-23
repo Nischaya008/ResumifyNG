@@ -417,13 +417,23 @@ export const Interview: React.FC = () => {
                     } else {
                         setHasSavedTranscript(true);
 
-                        // Increment lifetime metrics
-                        const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
-                        if (profile) {
-                            await supabase.from('profiles').update({
-                                lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
-                                lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
-                            }).eq('id', user.id);
+                        // Increment lifetime metrics via backend API (bypasses RLS) or fallback to direct Supabase
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const token = session?.access_token;
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                        const res = token ? await fetch(`${apiUrl}/api/profile/increment-metrics`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ resumes: 0, interviews: 1, questions: questionsCount }),
+                        }) : null;
+                        if (!res?.ok) {
+                            const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
+                            if (profile) {
+                                await supabase.from('profiles').update({
+                                    lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
+                                    lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
+                                }).eq('id', user.id);
+                            }
                         }
 
                         toast.success("Transcript saved and downloaded!", { id: loadingToast });
@@ -475,12 +485,22 @@ export const Interview: React.FC = () => {
                     });
 
                     if (!error) {
-                        const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
-                        if (profile) {
-                            await supabase.from('profiles').update({
-                                lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
-                                lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
-                            }).eq('id', user.id);
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const token = session?.access_token;
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+                        const res = token ? await fetch(`${apiUrl}/api/profile/increment-metrics`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ resumes: 0, interviews: 1, questions: questionsCount }),
+                        }) : null;
+                        if (!res?.ok) {
+                            const { data: profile } = await supabase.from('profiles').select('lifetime_interviews, lifetime_questions').eq('id', user.id).single();
+                            if (profile) {
+                                await supabase.from('profiles').update({
+                                    lifetime_interviews: (profile.lifetime_interviews || 0) + 1,
+                                    lifetime_questions: (profile.lifetime_questions || 0) + questionsCount
+                                }).eq('id', user.id);
+                            }
                         }
                     }
                 }
