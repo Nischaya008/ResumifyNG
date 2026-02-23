@@ -1,3 +1,4 @@
+import uuid
 import razorpay
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -34,7 +35,7 @@ async def create_order(request: OrderRequest):
         data = {
             "amount": request.amount * 100,  # Razorpay expects amount in paise
             "currency": request.currency,
-            "receipt": f"receipt_{request.amount}",
+            "receipt": f"rng_{uuid.uuid4().hex[:24]}",  # Must be unique per order (max 40 chars)
         }
         order = razorpay_client.order.create(data=data)
         return {"order_id": order["id"], "amount": order["amount"], "currency": order["currency"]}
