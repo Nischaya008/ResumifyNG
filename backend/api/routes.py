@@ -9,11 +9,13 @@ from services.interview import interview_service
 from models.domain import JobDescription, ResumeParsingResult
 from models.interview import InterviewRequest
 from api.payment import router as payment_router
+from api.profile_metrics import router as profile_metrics_router
 import os
 import json
 
 router = APIRouter()
 router.include_router(payment_router, prefix="/payment", tags=["Payment"])
+router.include_router(profile_metrics_router, prefix="/profile", tags=["Profile"])
 
 
 @router.get("/health")
