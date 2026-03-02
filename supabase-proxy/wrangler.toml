@@ -1,0 +1,15 @@
+name = "supabase-proxy"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# IMPORTANT: Replace with your actual values before deploying
+# Option 1: Use a custom domain (recommended)
+# routes = [
+#   { pattern = "db.yourdomain.com/*", zone_name = "yourdomain.com" }
+# ]
+
+# Option 2: Use workers.dev subdomain (default, no custom domain needed)
+# Your worker will be available at: https://supabase-proxy.<your-account>.workers.dev
+
+[vars]
+SUPABASE_URL = "https://ezemctappnoeggmuosco.supabase.co"
