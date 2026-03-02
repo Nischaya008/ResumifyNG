@@ -8,13 +8,17 @@ const ALLOWED_ORIGINS = [
   'https://resumifyng.vercel.app',
 ];
 
-function getCorsHeaders(origin: string | null): Record<string, string> {
+function getCorsHeaders(origin: string | null, requestHeaders?: string | null): Record<string, string> {
   const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  
+  // Echo back the requested headers to allow all of them
+  const allowHeaders = requestHeaders || 'Authorization, apikey, Content-Type, x-client-info, X-Supabase-Api-Version, Accept, Range, Content-Range, Prefer, accept-profile, content-profile, x-upsert, X-Client-Info';
+  
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
-    'Access-Control-Allow-Headers': 'Authorization, apikey, Content-Type, x-client-info, X-Supabase-Api-Version, Accept, Range, Content-Range, Prefer, accept-profile, content-profile, x-upsert, X-Client-Info',
-    'Access-Control-Expose-Headers': 'Content-Range, Range, Content-Length, X-Supabase-Api-Version, x-sb-*',
+    'Access-Control-Allow-Headers': allowHeaders,
+    'Access-Control-Expose-Headers': 'Content-Range, Range, Content-Length, X-Supabase-Api-Version',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   };
@@ -24,7 +28,8 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin');
-    const corsHeaders = getCorsHeaders(origin);
+    const requestedHeaders = request.headers.get('Access-Control-Request-Headers');
+    const corsHeaders = getCorsHeaders(origin, requestedHeaders);
 
     if (request.method === 'OPTIONS') {
       return new Response(null, {
