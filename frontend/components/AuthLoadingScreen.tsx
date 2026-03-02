@@ -11,9 +11,33 @@ export const AuthLoadingScreen: React.FC = () => {
             // Intentional delay for smooth UI transition
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            const { data: { session } } = await supabase.auth.getSession();
             const params = new URLSearchParams(window.location.search);
             const mode = params.get('mode');
+            
+            // Handle tokens from backend OAuth callback
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            
+            if (accessToken && refreshToken) {
+                // Set session from backend OAuth tokens
+                const { error } = await supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
+                
+                if (error) {
+                    console.error('Failed to set session:', error);
+                    if (isMounted) toast.error('Authentication failed');
+                    window.history.pushState({}, '', '/onboard');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                    return;
+                }
+                
+                // Clear tokens from URL for security
+                window.history.replaceState({}, '', '/check-auth' + (mode ? `?mode=${mode}` : ''));
+            }
+
+            const { data: { session } } = await supabase.auth.getSession();
 
             if (session) {
                 if (mode === 'subscribe') {
