@@ -25,6 +25,13 @@ class Settings:
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "https://ezemctappnoeggmuosco.supabase.co")
     SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    
+    # Frontend URL (for OAuth redirects)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://resumifyng.vercel.app")
+    
     # CORS
     CORS_ORIGINS: list = [
         "http://localhost:5173", # Local dev default
