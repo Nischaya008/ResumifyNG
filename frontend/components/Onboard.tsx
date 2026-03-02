@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Check, X, ArrowRight, Eye, EyeOff, Hash, Github } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase, API_URL } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 export const Onboard: React.FC = () => {
@@ -23,8 +23,12 @@ export const Onboard: React.FC = () => {
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const emailParam = params.get('email');
+        const errorParam = params.get('error');
         if (emailParam) {
             setSignInEmail(emailParam);
+        }
+        if (errorParam) {
+            toast.error(`Authentication failed: ${errorParam}`);
         }
     }, []);
 
@@ -81,13 +85,10 @@ export const Onboard: React.FC = () => {
     };
 
     const handleGoogleSignIn = async () => {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.origin + '/check-auth',
-            }
-        });
-        if (error) toast.error(error.message);
+        // Use backend OAuth to bypass Supabase block in India
+        // Backend handles OAuth flow and returns tokens via redirect
+        const redirectTo = encodeURIComponent('/check-auth');
+        window.location.href = `${API_URL}/api/auth/google?redirect_to=${redirectTo}`;
     };
 
     const handleSignUp = async (e: React.FormEvent) => {
