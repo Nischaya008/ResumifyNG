@@ -131,42 +131,26 @@ async def create_or_signin_supabase_user(email: str, google_id: str, full_name: 
     }
 
     async with httpx.AsyncClient() as client:
+        user_id = None
+        
+        # First, try to find existing user by listing all users and filtering
         list_response = await client.get(
             f"{supabase_url}/auth/v1/admin/users",
-            headers=headers,
-            params={"filter": f"email.eq.{email}"}
+            headers=headers
         )
-
-        users_data = list_response.json()
-        existing_user = None
-
-        if isinstance(users_data, dict) and "users" in users_data:
-            for user in users_data["users"]:
-                if user.get("email") == email:
-                    existing_user = user
+        
+        if list_response.status_code == 200:
+            users_data = list_response.json()
+            users_list = users_data.get("users", []) if isinstance(users_data, dict) else users_data
+            
+            for user in users_list:
+                if user.get("email", "").lower() == email.lower():
+                    user_id = user["id"]
+                    print(f"Found existing user: {user_id}")
                     break
-        elif isinstance(users_data, list):
-            for user in users_data:
-                if user.get("email") == email:
-                    existing_user = user
-                    break
-
-        if existing_user:
-            user_id = existing_user["id"]
-
-            await client.put(
-                f"{supabase_url}/auth/v1/admin/users/{user_id}",
-                headers=headers,
-                json={
-                    "email_confirm": True,
-                    "user_metadata": {
-                        "full_name": full_name,
-                        "provider": "google",
-                        "google_id": google_id
-                    }
-                }
-            )
-        else:
+        
+        # If user not found, try to create
+        if not user_id:
             temp_password = secrets.token_urlsafe(32)
             create_response = await client.post(
                 f"{supabase_url}/auth/v1/admin/users",
@@ -182,96 +166,93 @@ async def create_or_signin_supabase_user(email: str, google_id: str, full_name: 
                     }
                 }
             )
-
-            if create_response.status_code >= 400:
-                error_detail = create_response.json()
-                raise HTTPException(status_code=500, detail=f"Failed to create user: {error_detail}")
-
-            user_data = create_response.json()
-            user_id = user_data["id"]
-
-        token_response = await client.post(
-            f"{supabase_url}/auth/v1/admin/users/{user_id}/token",
+            
+            if create_response.status_code < 400:
+                user_data = create_response.json()
+                user_id = user_data["id"]
+                print(f"Created new user: {user_id}")
+            else:
+                error_data = create_response.json()
+                # If email exists error, we need to find the user another way
+                if error_data.get("error_code") == "email_exists":
+                    print(f"User exists but wasn't found in list, searching again...")
+                    # Try pagination - get more users
+                    page = 1
+                    per_page = 1000
+                    while not user_id:
+                        paginated_response = await client.get(
+                            f"{supabase_url}/auth/v1/admin/users",
+                            headers=headers,
+                            params={"page": page, "per_page": per_page}
+                        )
+                        if paginated_response.status_code != 200:
+                            break
+                        
+                        paginated_data = paginated_response.json()
+                        users_list = paginated_data.get("users", []) if isinstance(paginated_data, dict) else paginated_data
+                        
+                        if not users_list:
+                            break
+                            
+                        for user in users_list:
+                            if user.get("email", "").lower() == email.lower():
+                                user_id = user["id"]
+                                print(f"Found user on page {page}: {user_id}")
+                                break
+                        
+                        if user_id or len(users_list) < per_page:
+                            break
+                        page += 1
+                else:
+                    raise HTTPException(status_code=500, detail=f"Failed to create user: {error_data}")
+        
+        if not user_id:
+            raise HTTPException(status_code=500, detail="Could not find or create user")
+        
+        # Update user metadata
+        await client.put(
+            f"{supabase_url}/auth/v1/admin/users/{user_id}",
             headers=headers,
-            params={"grant_type": "id_token"}
-        )
-
-        if token_response.status_code == 404 or token_response.status_code >= 400:
-            magic_link_response = await client.post(
-                f"{supabase_url}/auth/v1/admin/generate_link",
-                headers=headers,
-                json={
-                    "type": "magiclink",
-                    "email": email
+            json={
+                "email_confirm": True,
+                "user_metadata": {
+                    "full_name": full_name,
+                    "provider": "google",
+                    "google_id": google_id
                 }
-            )
-
-            if magic_link_response.status_code >= 400:
-                raise HTTPException(status_code=500, detail="Failed to generate session")
-
-            link_data = magic_link_response.json()
-
-            if "access_token" in link_data:
-                return {
-                    "access_token": link_data["access_token"],
-                    "refresh_token": link_data.get("refresh_token", "")
-                }
-
-            hashed_token = link_data.get("hashed_token")
-            if hashed_token:
-                verify_response = await client.post(
-                    f"{supabase_url}/auth/v1/verify",
-                    headers={"apikey": service_role_key, "Content-Type": "application/json"},
-                    json={
-                        "type": "magiclink",
-                        "token": hashed_token,
-                        "email": email
-                    }
-                )
-
-                if verify_response.status_code < 400:
-                    session_data = verify_response.json()
-                    return {
-                        "access_token": session_data.get("access_token", ""),
-                        "refresh_token": session_data.get("refresh_token", "")
-                    }
-
-            otp_response = await client.post(
-                f"{supabase_url}/auth/v1/otp",
-                headers={"apikey": service_role_key, "Content-Type": "application/json"},
-                json={
-                    "email": email,
-                    "create_user": False
-                }
-            )
-
-            temp_password = secrets.token_urlsafe(32)
-            await client.put(
-                f"{supabase_url}/auth/v1/admin/users/{user_id}",
-                headers=headers,
-                json={"password": temp_password}
-            )
-
-            signin_response = await client.post(
-                f"{supabase_url}/auth/v1/token?grant_type=password",
-                headers={"apikey": service_role_key, "Content-Type": "application/json"},
-                json={
-                    "email": email,
-                    "password": temp_password
-                }
-            )
-
-            if signin_response.status_code >= 400:
-                raise HTTPException(status_code=500, detail="Failed to create session")
-
-            session_data = signin_response.json()
-            return {
-                "access_token": session_data["access_token"],
-                "refresh_token": session_data["refresh_token"]
             }
-
-        token_data = token_response.json()
+        )
+        
+        # Generate session using password sign-in method
+        # Set a temporary password and sign in with it
+        temp_password = secrets.token_urlsafe(32)
+        
+        update_response = await client.put(
+            f"{supabase_url}/auth/v1/admin/users/{user_id}",
+            headers=headers,
+            json={"password": temp_password}
+        )
+        
+        if update_response.status_code >= 400:
+            print(f"Failed to update password: {update_response.json()}")
+            raise HTTPException(status_code=500, detail="Failed to prepare authentication")
+        
+        # Sign in with the temporary password to get tokens
+        signin_response = await client.post(
+            f"{supabase_url}/auth/v1/token?grant_type=password",
+            headers={"apikey": service_role_key, "Content-Type": "application/json"},
+            json={
+                "email": email,
+                "password": temp_password
+            }
+        )
+        
+        if signin_response.status_code >= 400:
+            print(f"Sign in failed: {signin_response.json()}")
+            raise HTTPException(status_code=500, detail="Failed to create session")
+        
+        session_data = signin_response.json()
         return {
-            "access_token": token_data["access_token"],
-            "refresh_token": token_data.get("refresh_token", "")
+            "access_token": session_data["access_token"],
+            "refresh_token": session_data["refresh_token"]
         }
