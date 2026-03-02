@@ -12,9 +12,9 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, apikey, Content-Type, x-client-info, X-Supabase-Api-Version, Accept, Range, Content-Range, Prefer',
-    'Access-Control-Expose-Headers': 'Content-Range, Range, Content-Length, X-Supabase-Api-Version',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD',
+    'Access-Control-Allow-Headers': 'Authorization, apikey, Content-Type, x-client-info, X-Supabase-Api-Version, Accept, Range, Content-Range, Prefer, accept-profile, content-profile, x-upsert, X-Client-Info',
+    'Access-Control-Expose-Headers': 'Content-Range, Range, Content-Length, X-Supabase-Api-Version, x-sb-*',
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   };
